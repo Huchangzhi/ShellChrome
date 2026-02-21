@@ -1,0 +1,25 @@
+{
+  "name": "console-browser",
+  "version": "1.0.0",
+  "description": "基于 chrome-devtools-mcp 的 Node.js 中文控制台浏览器",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "keywords": [
+    "chrome",
+    "devtools",
+    "browser",
+    "automation",
+    "console"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.26.0",
+    "chrome-devtools-mcp": "^0.17.3",
+    "sharp": "^0.33.0",
+    "tesseract.js": "^7.0.0"
+  }
+}
