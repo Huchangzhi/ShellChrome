@@ -4,6 +4,7 @@
  */
 
 import Tesseract from 'tesseract.js';
+import sharp from 'sharp';
 
 /**
  * 从截图中提取文字
@@ -35,9 +36,8 @@ export async function renderImageWithOCR(imageData, maxWidth = 100, maxHeight = 
   try {
     // 先进行 OCR 识别
     const ocrResult = await extractTextFromImage(imageData, 'eng+chi_sim');
-    
+
     // 同时渲染彩色背景
-    const sharp = (await import('sharp')).default;
     const image = sharp(imageData);
     const metadata = await image.metadata();
     

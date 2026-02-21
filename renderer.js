@@ -3,6 +3,9 @@
  * 将截图转换为彩色 ASCII 艺术在终端显示
  */
 
+import sharp from 'sharp';
+import Tesseract from 'tesseract.js';
+
 // ANSI 颜色代码
 const COLORS = {
   reset: '\x1b[0m',
@@ -122,11 +125,6 @@ function getContrastChar(bgR, bgG, bgB) {
  */
 export async function renderImageToTerminal(imageData, maxWidth = 100, maxHeight = 50) {
   try {
-    const sharp = (await import('sharp')).default;
-    if (!sharp) {
-      return renderPlaceholder();
-    }
-
     const image = sharp(imageData);
     const metadata = await image.metadata();
 
@@ -177,11 +175,6 @@ export async function renderImageToTerminal(imageData, maxWidth = 100, maxHeight
  */
 export async function renderImageWithText(imageData, maxWidth = 100, maxHeight = 50) {
   try {
-    const sharp = (await import('sharp')).default;
-    if (!sharp) {
-      return renderPlaceholder();
-    }
-
     const image = sharp(imageData);
     const metadata = await image.metadata();
 
@@ -259,15 +252,12 @@ function contrastColor(r, g, b) {
  * 从 OCR 创建文字位置映射
  */
 async function createTextMapFromOCR(imageData, targetWidth, targetHeight) {
-  const Tesseract = (await import('tesseract.js')).default;
-  const sharp = (await import('sharp')).default;
-
   try {
     // 获取原始图像尺寸
     const metadata = await sharp(imageData).metadata();
     const origWidth = metadata.width;
     const origHeight = metadata.height;
-    
+
     // 创建 worker 并启用 blocks 输出
     const worker = await Tesseract.createWorker('eng+chi_sim', 1, {
       logger: () => {},
@@ -357,11 +347,6 @@ ${COLORS.fg.green}screenshot ./page.png${COLORS.reset}
  */
 export async function renderImageAsASCII(imageData, maxWidth = 80, maxHeight = 40) {
   try {
-    const sharp = (await import('sharp')).default;
-    if (!sharp) {
-      return renderPlaceholder();
-    }
-    
     const image = sharp(imageData);
     const metadata = await image.metadata();
     
