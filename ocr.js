@@ -8,10 +8,11 @@
  * @param {Buffer} imageData - PNG 图像数据
  * @param {string} lang - 识别语言（eng 英文，chi_sim 简体中文）
  */
-export async function extractTextFromImage(imageData, lang = 'eng') {
+async function extractTextFromImage(imageData, lang = 'eng') {
   try {
-    const Tesseract = await import('tesseract.js');
-    const result = await Tesseract.default.recognize(imageData, lang, {
+    const TesseractModule = await import('tesseract.js');
+    const Tesseract = TesseractModule.default;
+    const result = await Tesseract.recognize(imageData, lang, {
       logger: () => {}, // 禁用日志输出
     });
 
@@ -30,7 +31,7 @@ export async function extractTextFromImage(imageData, lang = 'eng') {
  * 渲染截图为文字 + 背景混合模式
  * 文字区域显示真实文字，其他区域显示色块
  */
-export async function renderImageWithOCR(imageData, maxWidth = 100, maxHeight = 50) {
+async function renderImageWithOCR(imageData, maxWidth = 100, maxHeight = 50) {
   try {
     // 先进行 OCR 识别
     const ocrResult = await extractTextFromImage(imageData, 'eng+chi_sim');
@@ -38,9 +39,6 @@ export async function renderImageWithOCR(imageData, maxWidth = 100, maxHeight = 
     // 同时渲染彩色背景
     const sharpModule = await import('sharp');
     const sharp = sharpModule.default;
-    if (!sharp) {
-      return renderPlaceholder();
-    }
 
     const image = sharp(imageData);
     const metadata = await image.metadata();
@@ -125,7 +123,7 @@ function createTextMap(lines, targetWidth, targetHeight, origWidth, origHeight) 
 /**
  * 简单模式：只显示识别出的文字
  */
-export async function renderTextOnly(imageData) {
+async function renderTextOnly(imageData) {
   try {
     const result = await extractTextFromImage(imageData, 'eng+chi_sim');
     
@@ -147,16 +145,9 @@ export async function renderTextOnly(imageData) {
 }
 
 /**
- * 渲染占位符（当没有图像库时）
- */
-function renderPlaceholder() {
-  return '\x1b[33m⚠ 需要安装 sharp 库才能显示截图\x1b[0m\n\x1b[90m运行：npm install sharp\x1b[0m\n\n\x1b[36m或者使用截图保存功能：\x1b[0m\n\x1b[32mscreenshot ./page.png\x1b[0m\n';
-}
-
-/**
  * 详细模式：显示文字和位置信息
  */
-export async function renderTextDetailed(imageData) {
+async function renderTextDetailed(imageData) {
   try {
     const result = await extractTextFromImage(imageData, 'eng+chi_sim');
     
@@ -178,9 +169,11 @@ export async function renderTextDetailed(imageData) {
     }
     
     output += '\n====================================\n';
-    
+
     return output;
   } catch (error) {
     return `OCR 识别失败：${error.message}\n`;
   }
 }
+
+module.exports = { extractTextFromImage, renderImageWithOCR, renderTextOnly, renderTextDetailed };

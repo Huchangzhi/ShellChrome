@@ -1,6 +1,6 @@
 /**
  * 基于 chrome-devtools-mcp 的 Node.js 中文控制台浏览器
- * 
+ *
  * 功能：
  * - 打开/关闭/切换标签页
  * - 查看页面元素
@@ -11,10 +11,10 @@
  * - 执行 JavaScript
  */
 
-import readline from 'readline';
-import { ConsoleBrowser } from './browser.js';
-import { renderImageToTerminal, renderImageAsASCII, renderImageWithText, COLORS } from './renderer.js';
-import { renderTextOnly } from './ocr.js';
+const readline = require('readline');
+const { ConsoleBrowser } = require('./browser.js');
+const { renderImageToTerminal, renderImageAsASCII, renderImageWithText, COLORS } = require('./renderer.js');
+const { renderTextOnly } = require('./ocr.js');
 
 // 创建 readline 接口
 const rl = readline.createInterface({

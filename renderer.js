@@ -120,13 +120,10 @@ function getContrastChar(bgR, bgG, bgB) {
  * @param {number} maxWidth - 最大宽度（字符数）
  * @param {number} maxHeight - 最大高度（行数）
  */
-export async function renderImageToTerminal(imageData, maxWidth = 100, maxHeight = 50) {
+async function renderImageToTerminal(imageData, maxWidth = 100, maxHeight = 50) {
   try {
     const sharpModule = await import('sharp');
     const sharp = sharpModule.default;
-    if (!sharp) {
-      return renderPlaceholder();
-    }
 
     const image = sharp(imageData);
     const metadata = await image.metadata();
@@ -176,13 +173,10 @@ export async function renderImageToTerminal(imageData, maxWidth = 100, maxHeight
  * @param {number} maxWidth - 最大宽度（字符数）
  * @param {number} maxHeight - 最大高度（行数）
  */
-export async function renderImageWithText(imageData, maxWidth = 100, maxHeight = 50) {
+async function renderImageWithText(imageData, maxWidth = 100, maxHeight = 50) {
   try {
     const sharpModule = await import('sharp');
     const sharp = sharpModule.default;
-    if (!sharp) {
-      return renderPlaceholder();
-    }
 
     const image = sharp(imageData);
     const metadata = await image.metadata();
@@ -264,9 +258,6 @@ async function createTextMapFromOCR(imageData, targetWidth, targetHeight) {
   try {
     const sharpModule = await import('sharp');
     const sharp = sharpModule.default;
-    if (!sharp) {
-      return {};
-    }
 
     // 获取原始图像尺寸
     const metadata = await sharp(imageData).metadata();
@@ -274,7 +265,8 @@ async function createTextMapFromOCR(imageData, targetWidth, targetHeight) {
     const origHeight = metadata.height;
 
     // 创建 worker 并启用 blocks 输出
-    const Tesseract = (await import('tesseract.js')).default;
+    const TesseractModule = await import('tesseract.js');
+    const Tesseract = TesseractModule.default;
     const worker = await Tesseract.createWorker('eng+chi_sim', 1, {
       logger: () => {},
     });
@@ -347,27 +339,12 @@ async function createTextMapFromOCR(imageData, targetWidth, targetHeight) {
 }
 
 /**
- * 渲染占位符（当没有图像库时）
- */
-function renderPlaceholder() {
-  return `${COLORS.fg.yellow}⚠ 需要安装 sharp 库才能显示截图${COLORS.reset}
-${COLORS.fg.gray}运行：npm install sharp${COLORS.reset}
-
-${COLORS.fg.cyan}或者使用截图保存功能：${COLORS.reset}
-${COLORS.fg.green}screenshot ./page.png${COLORS.reset}
-`;
-}
-
-/**
  * 简化的 ASCII 渲染（灰度字符）
  */
-export async function renderImageAsASCII(imageData, maxWidth = 80, maxHeight = 40) {
+async function renderImageAsASCII(imageData, maxWidth = 80, maxHeight = 40) {
   try {
     const sharpModule = await import('sharp');
     const sharp = sharpModule.default;
-    if (!sharp) {
-      return renderPlaceholder();
-    }
 
     const image = sharp(imageData);
     const metadata = await image.metadata();
@@ -399,11 +376,11 @@ export async function renderImageAsASCII(imageData, maxWidth = 80, maxHeight = 4
       }
       output += '\n';
     }
-    
+
     return output;
   } catch (error) {
-    return renderPlaceholder();
+    throw error;
   }
 }
 
-export { COLORS };
+module.exports = { renderImageToTerminal, renderImageAsASCII, renderImageWithText, COLORS };

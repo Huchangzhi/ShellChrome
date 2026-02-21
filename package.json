@@ -2,24 +2,11 @@
   "name": "shellchrome",
   "version": "1.0.0",
   "description": "基于 chrome-devtools-mcp 的 Node.js 中文控制台浏览器",
-  "type": "module",
   "main": "index.js",
   "bin": "index.js",
   "scripts": {
     "start": "node index.js",
-    "build": "pkg . --output dist/shellchrome"
-  },
-  "pkg": {
-    "scripts": [
-      "renderer.js",
-      "browser.js",
-      "ocr.js"
-    ],
-    "targets": [
-      "node20-linux-x64",
-      "node20-win-x64"
-    ],
-    "compress": "GZip"
+    "build": "nexe index.js --target node18 --output dist/shellchrome"
   },
   "keywords": [
     "chrome",
@@ -30,11 +17,13 @@
   ],
   "author": "",
   "license": "MIT",
-  "optionalDependencies": {
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.26.0",
+    "chrome-devtools-mcp": "^0.17.3",
     "sharp": "^0.33.0",
     "tesseract.js": "^7.0.0"
   },
   "devDependencies": {
-    "@yao-pkg/pkg": "latest"
+    "nexe": "latest"
   }
 }
