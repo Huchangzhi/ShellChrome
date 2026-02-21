@@ -5,6 +5,8 @@
 
 const { Client } = require('@modelcontextprotocol/sdk/client/index.js');
 const { StdioClientTransport } = require('@modelcontextprotocol/sdk/client/stdio.js');
+const fs = require('node:fs');
+const path = require('node:path');
 
 class ConsoleBrowser {
   constructor(options = {}) {
@@ -13,8 +15,40 @@ class ConsoleBrowser {
     this.currentPageId = null;
     this.pages = [];
     this.lastSnapshot = null;
-    // 默认使用无头模式（后台运行）
-    this.headless = options.headless ?? true;
+    // 从配置文件读取 headless 设置，默认无头模式
+    const config = this.loadConfig();
+    this.headless = options.headless ?? config.headless ?? true;
+  }
+
+  /**
+   * 加载配置文件
+   */
+  loadConfig() {
+    try {
+      const configPath = path.join(__dirname, 'config.json');
+      if (fs.existsSync(configPath)) {
+        return JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+      }
+    } catch (error) {
+      console.error('加载配置文件失败:', error.message);
+    }
+    return {};
+  }
+
+  /**
+   * 保存配置文件
+   */
+  saveConfig(config) {
+    try {
+      const configPath = path.join(__dirname, 'config.json');
+      const currentConfig = this.loadConfig();
+      const newConfig = { ...currentConfig, ...config };
+      fs.writeFileSync(configPath, JSON.stringify(newConfig, null, 2), 'utf-8');
+      return true;
+    } catch (error) {
+      console.error('保存配置文件失败:', error.message);
+      return false;
+    }
   }
 
   /**
@@ -23,10 +57,14 @@ class ConsoleBrowser {
   async start() {
     const args = [
       'chrome-devtools-mcp@latest',
-      '--headless=' + (this.headless ? 'true' : 'false'),
       // 不使用 isolated，使用固定的用户数据目录以保留浏览数据
       '--channel=stable'
     ];
+    
+    // 只在无头模式下传递 --headless 参数
+    if (this.headless) {
+      args.push('--headless');
+    }
 
     this.transport = new StdioClientTransport({
       command: 'npx',

@@ -52,6 +52,7 @@ const HELP_TEXT = `
 ╠══════════════════════════════════════════════════════════════╣
 ║  其他：                                                       ║
 ║    h / help          显示帮助信息                              ║
+║    ui                配置 UI 模式（显示/隐藏浏览器窗口）         ║
 ║    x                 退出程序                                  ║
 ╚══════════════════════════════════════════════════════════════╝
 `;
@@ -68,7 +69,7 @@ function showWelcome() {
 ║                                                              ║
 ║       快捷命令：c=点击，t=输入，k=按键，q=关闭                ║
 ║       l=元素，lc=可交互元素，sp=色块，st=色块 + 文字，sa=ASCII  ║
-║       h=帮助，x=退出                                          ║
+║       ui=UI 模式，h=帮助，x=退出                               ║
 ║                                                              ║
 ╚══════════════════════════════════════════════════════════════╝
 `);
@@ -212,6 +213,11 @@ async function executeCommand(input) {
       case 'network':
       case 'net':
         await handleNetwork();
+        break;
+
+      // UI 模式配置
+      case 'ui':
+        await handleUI(args);
         break;
 
       default:
@@ -447,6 +453,39 @@ async function handleNetwork() {
     }
     console.log('========================================\n');
   }
+}
+
+/**
+ * 配置 UI 模式
+ */
+async function handleUI(args) {
+  if (!args[0]) {
+    const config = browser.loadConfig();
+    const currentMode = config.headless ? '无头模式（后台运行）[默认]' : 'UI 模式（显示窗口）';
+    console.log(`当前配置：${currentMode}`);
+    console.log('用法：');
+    console.log('  ui on   - 下次启动时开启 UI 模式（显示浏览器窗口）');
+    console.log('  ui off  - 下次启动时无头模式（后台运行）');
+    return;
+  }
+
+  const mode = args[0].toLowerCase();
+  let headless;
+
+  if (mode === 'on' || mode === 'true' || mode === '1') {
+    headless = false;
+    browser.saveConfig({ headless: false });
+    console.log('✅ 配置已保存：下次启动时开启 UI 模式（显示浏览器窗口）');
+  } else if (mode === 'off' || mode === 'false' || mode === '0') {
+    headless = true;
+    browser.saveConfig({ headless: true });
+    console.log('✅ 配置已保存：下次启动时无头模式（后台运行）');
+  } else {
+    console.log('未知模式，请使用：ui on 或 ui off');
+    return;
+  }
+
+  console.log('提示：请重启程序以使配置生效（使用 x 退出后重新运行）');
 }
 
 function showStatus() {

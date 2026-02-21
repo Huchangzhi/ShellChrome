@@ -35,7 +35,6 @@ jobs:
             --target linux-x64-20.x \
             --output ./dist/shellchrome-linux \
             --build \
-            --make "-j4"
 
       - name: Upload Linux artifact
         uses: actions/upload-artifact@v4
