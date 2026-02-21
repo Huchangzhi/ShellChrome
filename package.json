@@ -15,10 +15,6 @@
       "browser.js",
       "ocr.js"
     ],
-    "assets": [
-      "node_modules/sharp",
-      "node_modules/tesseract.js"
-    ],
     "targets": [
       "node20-linux-x64",
       "node20-win-x64"
@@ -34,9 +30,7 @@
   ],
   "author": "",
   "license": "MIT",
-  "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.26.0",
-    "chrome-devtools-mcp": "^0.17.3",
+  "optionalDependencies": {
     "sharp": "^0.33.0",
     "tesseract.js": "^7.0.0"
   },

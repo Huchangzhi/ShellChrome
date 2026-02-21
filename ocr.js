@@ -3,9 +3,6 @@
  * 使用 Tesseract.js 识别截图中的文字
  */
 
-import Tesseract from 'tesseract.js';
-import sharp from 'sharp';
-
 /**
  * 从截图中提取文字
  * @param {Buffer} imageData - PNG 图像数据
@@ -13,10 +10,11 @@ import sharp from 'sharp';
  */
 export async function extractTextFromImage(imageData, lang = 'eng') {
   try {
-    const result = await Tesseract.recognize(imageData, lang, {
+    const Tesseract = await import('tesseract.js');
+    const result = await Tesseract.default.recognize(imageData, lang, {
       logger: () => {}, // 禁用日志输出
     });
-    
+
     return {
       text: result.data.text,
       lines: result.data.lines,
@@ -38,6 +36,12 @@ export async function renderImageWithOCR(imageData, maxWidth = 100, maxHeight = 
     const ocrResult = await extractTextFromImage(imageData, 'eng+chi_sim');
 
     // 同时渲染彩色背景
+    const sharpModule = await import('sharp');
+    const sharp = sharpModule.default;
+    if (!sharp) {
+      return renderPlaceholder();
+    }
+
     const image = sharp(imageData);
     const metadata = await image.metadata();
     
@@ -140,6 +144,13 @@ export async function renderTextOnly(imageData) {
   } catch (error) {
     return `OCR 识别失败：${error.message}\n`;
   }
+}
+
+/**
+ * 渲染占位符（当没有图像库时）
+ */
+function renderPlaceholder() {
+  return '\x1b[33m⚠ 需要安装 sharp 库才能显示截图\x1b[0m\n\x1b[90m运行：npm install sharp\x1b[0m\n\n\x1b[36m或者使用截图保存功能：\x1b[0m\n\x1b[32mscreenshot ./page.png\x1b[0m\n';
 }
 
 /**
