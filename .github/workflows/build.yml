@@ -26,6 +26,9 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Install nexe
+        run: npm install -g nexe
+
       - name: Build Linux executable
         run: |
           nexe index.js \
@@ -51,6 +54,9 @@ jobs:
 
       - name: Install dependencies
         run: npm install
+
+      - name: Install nexe
+        run: npm install -g nexe
 
       - name: Build Windows executable
         run: |
