@@ -26,8 +26,8 @@ jobs:
       - name: Install dependencies
         run: npm i
 
-      - name: Install pkg
-        run: npm install -g pkg
+      - name: Install @yao-pkg/pkg
+        run: npm install -g @yao-pkg/pkg
 
       - name: Build Linux executable
         run: |
@@ -55,8 +55,8 @@ jobs:
       - name: Install dependencies
         run: npm i
 
-      - name: Install pkg
-        run: npm install -g pkg
+      - name: Install @yao-pkg/pkg
+        run: npm install -g @yao-pkg/pkg
 
       - name: Build Windows executable
         run: |
