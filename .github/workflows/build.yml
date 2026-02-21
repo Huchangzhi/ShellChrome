@@ -26,24 +26,21 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build project
-        run: npm run build
-
-      - name: Install nexe
-        run: npm install -g nexe
+      - name: Install pkg
+        run: npm install -g pkg
 
       - name: Build Linux executable
         run: |
-          nexe ./dist/cli.js \
-            --target linux-x64-20.x \
-            --output ./dist/qwen-linux \
-            --build
+          pkg index.js \
+            --target node20-linux-x64 \
+            --output ./dist/shellchrome-linux \
+            --compress GZip
 
       - name: Upload Linux artifact
         uses: actions/upload-artifact@v4
         with:
-          name: qwen-executable-linux-x64
-          path: dist/qwen-linux
+          name: shellchrome-linux-x64
+          path: dist/shellchrome-linux
 
   build-windows:
     runs-on: windows-latest
@@ -58,34 +55,22 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build project
-        run: npm run build
-        shell: bash
-
-      - name: Install nexe
-        run: npm install -g nexe
-
-      - name: Get CPU core count
-        id: cpu-cores
-        run: |
-          $cores = [System.Environment]::ProcessorCount
-          echo "CORES=$cores" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
-          Write-Host "CPU cores available: $cores"
+      - name: Install pkg
+        run: npm install -g pkg
 
       - name: Build Windows executable
         run: |
-          nexe ./dist/cli.js ^
-            --target windows-x64-20.x ^
-            --output ./dist/qwen.exe ^
-            --make "-j4" ^
-            --build
-        shell: cmd
+          pkg index.js `
+            --target node20-win-x64 `
+            --output ./dist/shellchrome.exe `
+            --compress GZip
+        shell: pwsh
 
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
         with:
-          name: qwen-executable-win-x64
-          path: dist/qwen.exe
+          name: shellchrome-win-x64
+          path: dist/shellchrome.exe
 
   release:
     needs: [build-linux, build-windows]
@@ -95,30 +80,30 @@ jobs:
       - name: Download Linux artifact
         uses: actions/download-artifact@v4
         with:
-          name: qwen-executable-linux-x64
+          name: shellchrome-linux-x64
           path: ./release
 
       - name: Download Windows artifact
         uses: actions/download-artifact@v4
         with:
-          name: qwen-executable-win-x64
+          name: shellchrome-win-x64
           path: ./release
 
       - name: Rename artifacts
         run: |
           cd ./release
-          mv qwen-linux qwen-${{ github.event.inputs.version }}-linux-x64
-          mv qwen.exe qwen-${{ github.event.inputs.version }}-win-x64.exe
+          mv shellchrome-linux shellchrome-${{ github.event.inputs.version }}-linux-x64
+          mv shellchrome.exe shellchrome-${{ github.event.inputs.version }}-win-x64.exe
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
           tag_name: v${{ github.event.inputs.version }}
-          name: Release v${{ github.event.inputs.version }}
+          name: ShellChrome v${{ github.event.inputs.version }}
           draft: false
           prerelease: false
           files: |
-            ./release/qwen-${{ github.event.inputs.version }}-linux-x64
-            ./release/qwen-${{ github.event.inputs.version }}-win-x64.exe
+            ./release/shellchrome-${{ github.event.inputs.version }}-linux-x64
+            ./release/shellchrome-${{ github.event.inputs.version }}-win-x64.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
