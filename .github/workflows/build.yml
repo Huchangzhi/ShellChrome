@@ -18,10 +18,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node.js 18.x
+      - name: Setup Node.js 20.x
         uses: actions/setup-node@v4
         with:
-          node-version: 18.x
+          node-version: 20.x
 
       - name: Install dependencies
         run: npm install
@@ -32,9 +32,10 @@ jobs:
       - name: Build Linux executable
         run: |
           nexe index.js \
-            --target linux-x64-18.x \
+            --target linux-x64-20.x \
             --output ./dist/shellchrome-linux \
-            --build
+            --build \
+            --make "-j4"
 
       - name: Upload Linux artifact
         uses: actions/upload-artifact@v4
@@ -47,10 +48,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node.js 18.x
+      - name: Setup Node.js 20.x
         uses: actions/setup-node@v4
         with:
-          node-version: 18.x
+          node-version: 20.x
 
       - name: Install dependencies
         run: npm install
@@ -61,9 +62,10 @@ jobs:
       - name: Build Windows executable
         run: |
           nexe index.js `
-            --target windows-x64-18.x `
+            --target windows-x64-20.x `
             --output ./dist/shellchrome.exe `
-            --build
+            --build `
+            --make "-j4"
         shell: pwsh
 
       - name: Upload Windows artifact

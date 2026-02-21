@@ -6,7 +6,7 @@
   "bin": "index.js",
   "scripts": {
     "start": "node index.js",
-    "build": "nexe index.js --target node18 --output dist/shellchrome"
+    "build": "nexe index.js --target node20 --output dist/shellchrome"
   },
   "keywords": [
     "chrome",
