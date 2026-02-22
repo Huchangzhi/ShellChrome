@@ -49,7 +49,7 @@ const HELP_TEXT = `
 ║  交互操作：                                                   ║
 ║    c <uid>           点击元素                                  ║
 ║    t <uid> <text>    向输入框输入文本                          ║
-║    k <key>           发送键盘按键                              ║
+║    k <key>           发送键盘按键 (Enter, Tab, Control+A 等)    ║
 ╠══════════════════════════════════════════════════════════════╣
 ║  其他：                                                       ║
 ║    h / help          显示帮助信息                              ║
@@ -84,6 +84,20 @@ async function executeCommand(input) {
   const trimmed = input.trim();
   if (!trimmed) return;
 
+  // 特殊处理 t/fill 命令，支持空格
+  const fillMatch = trimmed.match(/^(t|fill|t)\s+(\S+)\s+(.+)$/i);
+  if (fillMatch) {
+    const uid = fillMatch[2];
+    const text = fillMatch[3];
+    try {
+      await handleFill([uid, text]);
+    } catch (error) {
+      console.log(`❌ 输入失败：${error.message}`);
+    }
+    return;
+  }
+
+  // 其他命令按空格分割
   const parts = trimmed.split(/\s+/);
   const command = parts[0].toLowerCase();
   const args = parts.slice(1);
@@ -287,15 +301,110 @@ async function handleElements() {
 }
 
 /**
- * 获取元素（自动先获取快照）
+ * 获取元素（分页显示，支持翻页）
  */
 async function handleElementsAuto() {
   await browser.takeSnapshot();
-  await browser.showElements();
+
+  if (!browser.lastSnapshot) {
+    console.log('请先获取页面快照');
+    return;
+  }
+
+  // 获取所有 link 元素的 href
+  const linkHrefs = await browser.currentPage.evaluate(() => {
+    const hrefs = {};
+    document.querySelectorAll('a[href]').forEach((el) => {
+      const text = el.textContent?.trim() || el.getAttribute('aria-label') || '';
+      if (text) {
+        hrefs[text] = el.href;
+      }
+    });
+    return hrefs;
+  });
+
+  // 解析快照行
+  const lines = browser.lastSnapshot.split('\n').filter(line => line.trim());
+  
+  // 计算每页显示的行数（终端高度 - 5 行用于标题和提示）
+  const termRows = process.stdout.rows || 30;
+  const pageSize = Math.max(5, termRows - 5);
+  
+  let currentPage = 0;
+  const totalPages = Math.ceil(lines.length / pageSize);
+
+  // 设置终端为 raw 模式以监听按键
+  readline.emitKeypressEvents(process.stdin);
+  if (process.stdin.isTTY) {
+    process.stdin.setRawMode(true);
+  }
+
+  let running = true;
+
+  const showPage = (page) => {
+    console.clear();
+    const start = page * pageSize;
+    const end = Math.min(start + pageSize, lines.length);
+    const pageLines = lines.slice(start, end);
+
+    console.log(`\n========== 元素列表 (第 ${page + 1}/${totalPages} 页) ==========`);
+    
+    for (const line of pageLines) {
+      let output = line;
+      // 如果是 link 行，尝试添加 href
+      const linkMatch = line.match(/link:\s*([^\[\n]+)/);
+      if (linkMatch) {
+        const linkText = linkMatch[1].trim();
+        const href = linkHrefs[linkText];
+        if (href) {
+          const shortHref = href.length > 50 ? href.substring(0, 47) + '...' : href;
+          output = line + ` → ${shortHref}`;
+        }
+      }
+      console.log(output);
+    }
+    
+    console.log('=====================================\n');
+    console.log('[Enter] 下一页  [\\] 上一页  [ESC] 退出');
+  };
+
+  const keypressHandler = (str, key) => {
+    if (key && key.name === 'escape') {
+      running = false;
+    } else if (str === '\r' || str === '\n') {
+      // Enter - 下一页
+      if (currentPage < totalPages - 1) {
+        currentPage++;
+        showPage(currentPage);
+      }
+    } else if (str === '\\' || (key && key.name === 'backspace')) {
+      // \ 或 Backspace - 上一页
+      if (currentPage > 0) {
+        currentPage--;
+        showPage(currentPage);
+      }
+    }
+  };
+
+  process.stdin.on('keypress', keypressHandler);
+
+  try {
+    showPage(currentPage);
+    
+    while (running) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+  } finally {
+    process.stdin.off('keypress', keypressHandler);
+    if (process.stdin.isTTY) {
+      process.stdin.setRawMode(false);
+    }
+    console.log('');
+  }
 }
 
 /**
- * 获取可交互元素（按钮/输入框/链接）
+ * 获取可交互元素（分页显示，支持翻页）
  */
 async function handleInteractiveElements() {
   await browser.takeSnapshot();
@@ -317,9 +426,8 @@ async function handleInteractiveElements() {
     return hrefs;
   });
 
-  console.log('\n========== 可交互元素 ==========');
+  // 解析快照行，过滤出可交互元素
   const lines = browser.lastSnapshot.split('\n');
-  // 真正的可交互元素类型（排除 StaticText、LineBreak 等静态内容）
   const interactiveTypes = [
     'button:', 'textbox:', 'link:', 'checkbox:', 'radio:',
     'combobox:', 'listbox:', 'menuitem:', 'option:', 'tab:',
@@ -327,14 +435,12 @@ async function handleInteractiveElements() {
     'spinbutton:', 'slider:', 'switch:'
   ];
 
-  let count = 0;
+  const interactiveLines = [];
   for (const line of lines) {
     if (line.trim()) {
-      // 匹配 [uid_x] 格式
       const match = line.match(/\[uid_(\d+)\]/i);
       if (match) {
         const uid = `uid_${match[1]}`;
-        // 检查是否是可交互元素
         for (const type of interactiveTypes) {
           if (line.includes(type)) {
             let desc = line.replace(/\[uid_\d+\]\s*/i, '').trim();
@@ -352,8 +458,7 @@ async function handleInteractiveElements() {
               }
             }
             
-            console.log(`[${uid}] ${desc}`);
-            count++;
+            interactiveLines.push(`[${uid}] ${desc}`);
             break;
           }
         }
@@ -361,10 +466,77 @@ async function handleInteractiveElements() {
     }
   }
 
-  if (count === 0) {
+  if (interactiveLines.length === 0) {
+    console.log('\n========== 可交互元素 ==========');
     console.log('（没有找到可交互元素）');
+    console.log('=====================================\n');
+    return;
   }
-  console.log('=====================================\n');
+
+  // 计算每页显示的行数
+  const termRows = process.stdout.rows || 30;
+  const pageSize = Math.max(5, termRows - 5);
+  
+  let currentPage = 0;
+  const totalPages = Math.ceil(interactiveLines.length / pageSize);
+
+  // 设置终端为 raw 模式
+  readline.emitKeypressEvents(process.stdin);
+  if (process.stdin.isTTY) {
+    process.stdin.setRawMode(true);
+  }
+
+  let running = true;
+
+  const showPage = (page) => {
+    console.clear();
+    const start = page * pageSize;
+    const end = Math.min(start + pageSize, interactiveLines.length);
+    const pageLines = interactiveLines.slice(start, end);
+
+    console.log(`\n========== 可交互元素 (第 ${page + 1}/${totalPages} 页) ==========`);
+    
+    for (const line of pageLines) {
+      console.log(line);
+    }
+    
+    console.log('=====================================\n');
+    console.log('[Enter] 下一页  [\\] 上一页  [ESC] 退出');
+  };
+
+  const keypressHandler = (str, key) => {
+    if (key && key.name === 'escape') {
+      running = false;
+    } else if (str === '\r' || str === '\n') {
+      // Enter - 下一页
+      if (currentPage < totalPages - 1) {
+        currentPage++;
+        showPage(currentPage);
+      }
+    } else if (str === '\\' || (key && key.name === 'backspace')) {
+      // \ 或 Backspace - 上一页
+      if (currentPage > 0) {
+        currentPage--;
+        showPage(currentPage);
+      }
+    }
+  };
+
+  process.stdin.on('keypress', keypressHandler);
+
+  try {
+    showPage(currentPage);
+    
+    while (running) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+  } finally {
+    process.stdin.off('keypress', keypressHandler);
+    if (process.stdin.isTTY) {
+      process.stdin.setRawMode(false);
+    }
+    console.log('');
+  }
 }
 
 async function handleScreenshot(args) {
@@ -566,13 +738,20 @@ async function handleClick(args) {
 
 async function handleFill(args) {
   if (args.length < 2) {
-    console.log('用法：fill <uid> <text>');
+    console.log('用法：t <uid> <text>');
+    console.log('示例：');
+    console.log('  t uid_5 hello world');
+    console.log('  t uid_5 你好，世界');
     return;
   }
   const uid = args[0];
   const text = args.slice(1).join(' ');
-  await browser.fill(uid, text);
-  console.log('✅ 输入完成');
+  try {
+    await browser.fill(uid, text);
+    console.log('✅ 输入完成');
+  } catch (error) {
+    console.log(`❌ 输入失败：${error.message}`);
+  }
 }
 
 async function handleHover(args) {
@@ -587,11 +766,24 @@ async function handleHover(args) {
 async function handlePress(args) {
   if (!args[0]) {
     console.log('用法：press <key>');
+    console.log('支持的按键：');
+    console.log('  字母数字：A-Z, 0-9');
+    console.log('  功能键：Enter, Tab, Escape, Space, Backspace, Delete');
+    console.log('  方向键：ArrowUp, ArrowDown, ArrowLeft, ArrowRight');
+    console.log('  修饰键：Control, Shift, Alt, Meta');
+    console.log('  其他：F1-F12, PageDown, PageUp, Home, End, Insert');
+    console.log('  组合键：Control+A, Control+Shift+T 等');
+    console.log('示例：k Enter, k Control+A, k F5');
     return;
   }
   const key = args.join(' ');
-  await browser.pressKey(key);
-  console.log('✅ 按键完成');
+  try {
+    await browser.pressKey(key);
+    console.log('✅ 按键完成');
+  } catch (error) {
+    console.log(`❌ 按键失败：${error.message}`);
+    console.log('提示：检查按键名称是否正确，例如使用 Enter 而不是 enter');
+  }
 }
 
 async function handleWait(args) {

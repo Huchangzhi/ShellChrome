@@ -750,8 +750,42 @@ class ConsoleBrowser {
       await handle.evaluate(el => el.scrollIntoView({ behavior: 'auto', block: 'center' }));
       // 等待一小段时间让滚动完成
       await new Promise(resolve => setTimeout(resolve, 100));
-      // 使用原生 click() 方法
-      await handle.click();
+      
+      // 检查是否是链接（可能在新标签页打开）
+      const isLink = await handle.evaluate(el => el.tagName === 'A');
+      const target = await handle.evaluate(el => el.target);
+      const isOpenInNewTab = target === '_blank';
+      
+      // 尝试多种点击方式（按优先级）
+      try {
+        // 方式 1：使用 evaluate 触发点击事件（最直接）
+        await handle.evaluate(el => el.click());
+      } catch (e1) {
+        try {
+          // 方式 2：使用 Puppeteer 原生 click()
+          await handle.click();
+        } catch (e2) {
+          // 方式 3：使用鼠标点击（模拟真实用户）
+          const box = await handle.boundingBox();
+          if (box) {
+            await this.currentPage.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+          } else {
+            throw e2;
+          }
+        }
+      }
+      
+      // 如果是新标签页打开的链接，等待并切换到新标签页
+      if (isLink && isOpenInNewTab) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        await this.refreshPages();
+        if (this.pages.length > 1) {
+          // 切换到最新的标签页
+          const newPage = this.pages[this.pages.length - 1]._page;
+          this.currentPage = newPage;
+        }
+      }
+      
       return { text: `已点击元素 ${uid}` };
     } finally {
       await handle.dispose();
@@ -759,11 +793,22 @@ class ConsoleBrowser {
   }
 
   /**
-   * 输入文本
+   * 输入文本（先清空再输入）
    */
   async fill(uid, text) {
     const handle = await this.getElementByUid(uid);
     try {
+      // 先清空输入框
+      await handle.evaluate(el => {
+        if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+          el.value = '';
+          el.dispatchEvent(new Event('input', { bubbles: true }));
+          el.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      });
+      // 等待一小段时间
+      await new Promise(resolve => setTimeout(resolve, 50));
+      // 输入新文本
       await handle.type(text, { delay: 10 });
       return { text: `已输入文本到元素 ${uid}` };
     } finally {
