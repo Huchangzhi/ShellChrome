@@ -144,19 +144,20 @@ async function renderImageToTerminal(imageData, maxWidth = 100, maxHeight = 50) 
 
     // 计算保持比例的缩放尺寸
     // 终端字符宽高比约 0.5（字符高度是宽度的 2 倍），所以高度要乘以 2 来保持视觉比例
-    let targetWidth, targetHeight;
-    const visualAspectRatio = aspectRatio * 2; // 考虑字符形状的视觉宽高比
+    const visualAspectRatio = aspectRatio * 2;
 
+    let targetWidth, targetHeight;
     if (visualAspectRatio > maxWidth / maxHeight) {
       // 图像更宽，按宽度缩放
       targetWidth = maxWidth;
-      targetHeight = Math.floor(maxWidth / visualAspectRatio);
+      targetHeight = Math.round(maxWidth / visualAspectRatio);
     } else {
       // 图像更高，按高度缩放
       targetHeight = maxHeight;
-      targetWidth = Math.floor(targetHeight * visualAspectRatio);
+      targetWidth = Math.round(targetHeight * visualAspectRatio);
     }
 
+    // 确保不超过最大尺寸
     targetWidth = Math.min(targetWidth, maxWidth);
     targetHeight = Math.min(targetHeight, maxHeight);
 
@@ -211,19 +212,20 @@ async function renderImageWithText(imageData, maxWidth = 100, maxHeight = 50, el
 
     // 计算保持比例的缩放尺寸
     // 终端字符宽高比约 0.5（字符高度是宽度的 2 倍），所以高度要乘以 2 来保持视觉比例
-    let targetWidth, targetHeight;
-    const visualAspectRatio = aspectRatio * 2; // 考虑字符形状的视觉宽高比
+    const visualAspectRatio = aspectRatio * 2;
 
+    let targetWidth, targetHeight;
     if (visualAspectRatio > maxWidth / maxHeight) {
       // 图像更宽，按宽度缩放
       targetWidth = maxWidth;
-      targetHeight = Math.floor(maxWidth / visualAspectRatio);
+      targetHeight = Math.round(maxWidth / visualAspectRatio);
     } else {
       // 图像更高，按高度缩放
       targetHeight = maxHeight;
-      targetWidth = Math.floor(targetHeight * visualAspectRatio);
+      targetWidth = Math.round(targetHeight * visualAspectRatio);
     }
 
+    // 确保不超过最大尺寸
     targetWidth = Math.min(targetWidth, maxWidth);
     targetHeight = Math.min(targetHeight, maxHeight);
 
@@ -332,24 +334,25 @@ async function renderImageAsASCII(imageData, maxWidth = 80, maxHeight = 40) {
 
     // 计算保持比例的缩放尺寸
     // 终端字符宽高比约 0.5（字符高度是宽度的 2 倍），所以高度要乘以 2 来保持视觉比例
-    let targetWidth, targetHeight;
-    const visualAspectRatio = aspectRatio * 2; // 考虑字符形状的视觉宽高比
+    const visualAspectRatio = aspectRatio * 2;
 
+    let targetWidth, targetHeight;
     if (visualAspectRatio > maxWidth / maxHeight) {
       // 图像更宽，按宽度缩放
       targetWidth = maxWidth;
-      targetHeight = Math.floor(maxWidth / visualAspectRatio);
+      targetHeight = Math.round(maxWidth / visualAspectRatio);
     } else {
       // 图像更高，按高度缩放
       targetHeight = maxHeight;
-      targetWidth = Math.floor(targetHeight * visualAspectRatio);
+      targetWidth = Math.round(targetHeight * visualAspectRatio);
     }
 
+    // 确保不超过最大尺寸
     targetWidth = Math.min(targetWidth, maxWidth);
     targetHeight = Math.min(targetHeight, maxHeight);
 
     // 调整为灰度并缩小
-    image.greyscale();
+    await image.greyscale();
     await image.resize({ w: targetWidth, h: targetHeight });
 
     let output = '';

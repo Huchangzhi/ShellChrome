@@ -26,7 +26,7 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Bundle with esbuild (CJS format for nexe)
+      - name: Bundle with esbuild
         run: npm run bundle
 
       - name: Install nexe
@@ -58,7 +58,7 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Bundle with esbuild (CJS format for nexe)
+      - name: Bundle with esbuild
         run: npm run bundle
 
       - name: Install nexe

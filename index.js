@@ -66,7 +66,7 @@ function showWelcome() {
 ╔══════════════════════════════════════════════════════════════╗
 ║                                                              ║
 ║       🌐  ShellChrome v1.0.0                                ║
-║       基于 chrome-devtools-mcp                               ║
+║       基于 Puppeteer                                         ║
 ║                                                              ║
 ║       快捷命令：c=点击，t=输入，k=按键，q=关闭                ║
 ║       l=元素，lc=可交互元素，sp=色块，st=色块 + 文字，sa=ASCII  ║
@@ -282,8 +282,8 @@ async function handleSnapshot() {
   console.log('✅ 快照已获取，使用 elements 命令查看元素列表');
 }
 
-function handleElements() {
-  browser.showElements();
+async function handleElements() {
+  await browser.showElements();
 }
 
 /**
@@ -291,7 +291,7 @@ function handleElements() {
  */
 async function handleElementsAuto() {
   await browser.takeSnapshot();
-  browser.showElements();
+  await browser.showElements();
 }
 
 /**
@@ -299,31 +299,70 @@ async function handleElementsAuto() {
  */
 async function handleInteractiveElements() {
   await browser.takeSnapshot();
-  
+
   if (!browser.lastSnapshot) {
     console.log('请先获取页面快照');
     return;
   }
 
+  // 获取所有 link 元素的 href
+  const linkHrefs = await browser.currentPage.evaluate(() => {
+    const hrefs = {};
+    document.querySelectorAll('a[href]').forEach((el) => {
+      const text = el.textContent?.trim() || el.getAttribute('aria-label') || '';
+      if (text) {
+        hrefs[text] = el.href;
+      }
+    });
+    return hrefs;
+  });
+
   console.log('\n========== 可交互元素 ==========');
   const lines = browser.lastSnapshot.split('\n');
-  const interactiveTypes = ['button', 'textbox', 'link', 'checkbox', 'radio', 'combobox', 'listbox', 'menuitem', 'option', 'tab', 'treeitem', 'menu', 'menubar', 'toolbar', 'searchbox', 'spinbutton', 'slider', 'switch'];
-  
+  // 真正的可交互元素类型（排除 StaticText、LineBreak 等静态内容）
+  const interactiveTypes = [
+    'button:', 'textbox:', 'link:', 'checkbox:', 'radio:',
+    'combobox:', 'listbox:', 'menuitem:', 'option:', 'tab:',
+    'treeitem:', 'menu:', 'menubar:', 'toolbar:', 'searchbox:',
+    'spinbutton:', 'slider:', 'switch:'
+  ];
+
+  let count = 0;
   for (const line of lines) {
     if (line.trim()) {
-      const match = line.match(/uid[=:\s]+([^\s,]+)/i);
+      // 匹配 [uid_x] 格式
+      const match = line.match(/\[uid_(\d+)\]/i);
       if (match) {
-        const uid = match[1];
+        const uid = `uid_${match[1]}`;
         // 检查是否是可交互元素
         for (const type of interactiveTypes) {
-          if (line.toLowerCase().includes(type)) {
-            const desc = line.replace(/uid[=:\s]+[^\s,]+\s*/i, '').trim();
+          if (line.includes(type)) {
+            let desc = line.replace(/\[uid_\d+\]\s*/i, '').trim();
+            
+            // 如果是 link，添加 href
+            if (type === 'link:') {
+              const linkMatch = desc.match(/link:\s*([^\[\n→]+)/);
+              if (linkMatch) {
+                const linkText = linkMatch[1].trim();
+                const href = linkHrefs[linkText];
+                if (href) {
+                  const shortHref = href.length > 50 ? href.substring(0, 47) + '...' : href;
+                  desc += ` → ${shortHref}`;
+                }
+              }
+            }
+            
             console.log(`[${uid}] ${desc}`);
+            count++;
             break;
           }
         }
       }
     }
+  }
+
+  if (count === 0) {
+    console.log('（没有找到可交互元素）');
   }
   console.log('=====================================\n');
 }
@@ -642,7 +681,17 @@ function showStatus() {
   console.log('\n========== 浏览器状态 ==========');
   console.log(`连接状态：${browser ? '已连接' : '未连接'}`);
   console.log(`标签页数量：${browser?.pages?.length || 0}`);
-  console.log(`当前标签页：${browser?.currentPageId || '无'}`);
+  
+  // 获取当前标签页 URL
+  let currentUrl = '无';
+  if (browser?.currentPage) {
+    try {
+      currentUrl = browser.currentPage.url();
+    } catch (e) {
+      currentUrl = '未知';
+    }
+  }
+  console.log(`当前标签页：${currentUrl}`);
   console.log('===============================\n');
 }
 

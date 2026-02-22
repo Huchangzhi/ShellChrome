@@ -1,6 +1,6 @@
 # 控制台浏览器 (ShellChrome)
 
-基于 `chrome-devtools-mcp` 的 Node.js 中文控制台浏览器，支持通过命令行控制 Chrome 浏览器。
+基于 Puppeteer 的 Node.js 中文控制台浏览器，支持通过命令行控制 Chrome 浏览器。
 
 ## 功能特性
 
@@ -14,8 +14,8 @@
 
 ## 环境要求
 
-- Node.js >= 20.19
-- Chrome 浏览器（稳定版）
+- Node.js >= 20
+- Google Chrome 浏览器（稳定版）
 - npm
 
 ## 安装
