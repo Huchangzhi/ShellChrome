@@ -48,14 +48,15 @@ const COLORS = {
 const ASCII_CHARS = ' .:-=+*#%@';
 
 /**
- * 延迟加载 sharp 模块
+ * 延迟加载 jimp 模块
  */
-let _sharp = null;
-async function loadSharp() {
-  if (!_sharp) {
-    _sharp = require('sharp');
+let _jimp = null;
+async function loadJimp() {
+  if (!_jimp) {
+    const { Jimp } = require('jimp');
+    _jimp = Jimp;
   }
-  return _sharp;
+  return _jimp;
 }
 
 /**
@@ -133,19 +134,19 @@ function getContrastChar(bgR, bgG, bgB) {
  */
 async function renderImageToTerminal(imageData, maxWidth = 100, maxHeight = 50) {
   try {
-    const sharp = await loadSharp();
+    const Jimp = await loadJimp();
 
-    const image = sharp(imageData);
-    const metadata = await image.metadata();
-    const origWidth = metadata.width;
-    const origHeight = metadata.height;
+    // 读取图像
+    const image = await Jimp.fromBuffer(imageData);
+    const origWidth = image.bitmap.width;
+    const origHeight = image.bitmap.height;
     const aspectRatio = origWidth / origHeight;
 
     // 计算保持比例的缩放尺寸
     // 终端字符宽高比约 0.5（字符高度是宽度的 2 倍），所以高度要乘以 2 来保持视觉比例
     let targetWidth, targetHeight;
     const visualAspectRatio = aspectRatio * 2; // 考虑字符形状的视觉宽高比
-    
+
     if (visualAspectRatio > maxWidth / maxHeight) {
       // 图像更宽，按宽度缩放
       targetWidth = maxWidth;
@@ -159,23 +160,19 @@ async function renderImageToTerminal(imageData, maxWidth = 100, maxHeight = 50) 
     targetWidth = Math.min(targetWidth, maxWidth);
     targetHeight = Math.min(targetHeight, maxHeight);
 
-    // 调整图像大小并获取像素
-    const resized = await image
-      .resize(targetWidth, targetHeight, { fit: 'fill' })
-      .ensureAlpha()
-      .raw()
-      .toBuffer();
+    // 调整图像大小
+    await image.resize({ w: targetWidth, h: targetHeight });
 
     let output = '';
 
     // 遍历每个像素，只显示色块
     for (let y = 0; y < targetHeight; y++) {
       for (let x = 0; x < targetWidth; x++) {
-        const idx = (y * targetWidth + x) * 4;
-        const r = resized[idx];
-        const g = resized[idx + 1];
-        const b = resized[idx + 2];
-        const a = resized[idx + 3];
+        const pixel = image.getPixelColor(x, y);
+        const r = (pixel >> 24) & 0xff;
+        const g = (pixel >> 16) & 0xff;
+        const b = (pixel >> 8) & 0xff;
+        const a = pixel & 0xff;
 
         if (a < 128) {
           // 透明像素
@@ -204,22 +201,19 @@ async function renderImageToTerminal(imageData, maxWidth = 100, maxHeight = 50) 
  */
 async function renderImageWithText(imageData, maxWidth = 100, maxHeight = 50, elements = []) {
   try {
-    const sharp = await loadSharp();
+    const Jimp = await loadJimp();
 
-    const image = sharp(imageData);
-    const metadata = await image.metadata();
-    const origWidth = metadata.width;
-    const origHeight = metadata.height;
+    // 读取图像
+    const image = await Jimp.fromBuffer(imageData);
+    const origWidth = image.bitmap.width;
+    const origHeight = image.bitmap.height;
     const aspectRatio = origWidth / origHeight;
 
     // 计算保持比例的缩放尺寸
     // 终端字符宽高比约 0.5（字符高度是宽度的 2 倍），所以高度要乘以 2 来保持视觉比例
     let targetWidth, targetHeight;
     const visualAspectRatio = aspectRatio * 2; // 考虑字符形状的视觉宽高比
-    
-    console.log(`[原始图像：${origWidth}x${origHeight}, 宽高比：${aspectRatio.toFixed(2)}, 视觉宽高比：${visualAspectRatio.toFixed(2)}]`);
-    console.log(`[最大可用：${maxWidth}x${maxHeight}, 比例：${(maxWidth/maxHeight).toFixed(2)}]`);
-    
+
     if (visualAspectRatio > maxWidth / maxHeight) {
       // 图像更宽，按宽度缩放
       targetWidth = maxWidth;
@@ -233,14 +227,8 @@ async function renderImageWithText(imageData, maxWidth = 100, maxHeight = 50, el
     targetWidth = Math.min(targetWidth, maxWidth);
     targetHeight = Math.min(targetHeight, maxHeight);
 
-    console.log(`[渲染尺寸：${targetWidth}x${targetHeight} (最大：${maxWidth}x${maxHeight})]`);
-
-    // 调整图像大小并获取像素
-    const resized = await image
-      .resize(targetWidth, targetHeight, { fit: 'fill' })
-      .ensureAlpha()
-      .raw()
-      .toBuffer();
+    // 调整图像大小
+    await image.resize({ w: targetWidth, h: targetHeight });
 
     // 计算缩放比例
     const scaleX = targetWidth / origWidth;
@@ -255,11 +243,11 @@ async function renderImageWithText(imageData, maxWidth = 100, maxHeight = 50, el
     // 遍历每个像素
     for (let y = 0; y < targetHeight; y++) {
       for (let x = 0; x < targetWidth; x++) {
-        const idx = (y * targetWidth + x) * 4;
-        const r = resized[idx];
-        const g = resized[idx + 1];
-        const b = resized[idx + 2];
-        const a = resized[idx + 3];
+        const pixel = image.getPixelColor(x, y);
+        const r = (pixel >> 24) & 0xff;
+        const g = (pixel >> 16) & 0xff;
+        const b = (pixel >> 8) & 0xff;
+        const a = pixel & 0xff;
 
         // 检查这个位置是否有文字
         const textChar = textMap[y]?.[x];
@@ -334,22 +322,19 @@ function contrastColor(r, g, b) {
  */
 async function renderImageAsASCII(imageData, maxWidth = 80, maxHeight = 40) {
   try {
-    const sharp = await loadSharp();
+    const Jimp = await loadJimp();
 
-    const image = sharp(imageData);
-    const metadata = await image.metadata();
-    const origWidth = metadata.width;
-    const origHeight = metadata.height;
+    // 读取图像
+    const image = await Jimp.fromBuffer(imageData);
+    const origWidth = image.bitmap.width;
+    const origHeight = image.bitmap.height;
     const aspectRatio = origWidth / origHeight;
 
     // 计算保持比例的缩放尺寸
     // 终端字符宽高比约 0.5（字符高度是宽度的 2 倍），所以高度要乘以 2 来保持视觉比例
     let targetWidth, targetHeight;
     const visualAspectRatio = aspectRatio * 2; // 考虑字符形状的视觉宽高比
-    
-    console.log(`[原始图像：${origWidth}x${origHeight}, 宽高比：${aspectRatio.toFixed(2)}, 视觉宽高比：${visualAspectRatio.toFixed(2)}]`);
-    console.log(`[最大可用：${maxWidth}x${maxHeight}, 比例：${(maxWidth/maxHeight).toFixed(2)}]`);
-    
+
     if (visualAspectRatio > maxWidth / maxHeight) {
       // 图像更宽，按宽度缩放
       targetWidth = maxWidth;
@@ -364,23 +349,21 @@ async function renderImageAsASCII(imageData, maxWidth = 80, maxHeight = 40) {
     targetHeight = Math.min(targetHeight, maxHeight);
 
     // 调整为灰度并缩小
-    const resized = await image
-      .grayscale()
-      .resize(targetWidth, targetHeight, { fit: 'fill' })
-      .raw()
-      .toBuffer();
+    image.greyscale();
+    await image.resize({ w: targetWidth, h: targetHeight });
 
     let output = '';
-    
+
     for (let y = 0; y < targetHeight; y++) {
       for (let x = 0; x < targetWidth; x++) {
-        const idx = y * targetWidth + x;
-        const gray = resized[idx];
-        
+        const pixel = image.getPixelColor(x, y);
+        const r = (pixel >> 24) & 0xff;
+        const gray = r;
+
         // 根据灰度选择字符（从暗到亮）
         const charIndex = Math.floor((gray / 255) * (ASCII_CHARS.length - 1));
         const char = ASCII_CHARS[charIndex] || ' ';
-        
+
         output += char;
       }
       output += '\n';
@@ -388,7 +371,7 @@ async function renderImageAsASCII(imageData, maxWidth = 80, maxHeight = 40) {
 
     return output;
   } catch (error) {
-    throw error;
+    return `渲染失败：${error.message}\n`;
   }
 }
 

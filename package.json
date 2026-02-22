@@ -6,7 +6,7 @@
   "bin": "index.js",
   "scripts": {
     "start": "node index.js",
-    "bundle": "esbuild index.js --bundle --platform=node --target=node20 --format=cjs --outfile=dist/bundle.cjs --external:sharp --external:child_process --external:fs --external:path --external:url",
+    "bundle": "esbuild index.js --bundle --platform=node --target=node20 --format=cjs --outfile=dist/bundle.cjs --external:jimp --external:child_process --external:fs --external:path --external:url",
     "build:nexe": "nexe dist/bundle.cjs --target node20 --output dist/shellchrome"
   },
   "keywords": [
@@ -21,7 +21,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.26.0",
     "chrome-devtools-mcp": "^0.17.3",
-    "sharp": "^0.33.0"
+    "jimp": "^1.6.0"
   },
   "devDependencies": {
     "esbuild": "latest",
