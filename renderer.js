@@ -8,7 +8,7 @@ const COLORS = {
   reset: '\x1b[0m',
   bright: '\x1b[1m',
   dim: '\x1b[2m',
-  
+
   // 前景色
   fg: {
     black: '\x1b[30m',
@@ -21,7 +21,7 @@ const COLORS = {
     white: '\x1b[37m',
     gray: '\x1b[90m',
   },
-  
+
   // 背景色
   bg: {
     black: '\x1b[40m',
@@ -33,12 +33,12 @@ const COLORS = {
     cyan: '\x1b[46m',
     white: '\x1b[47m',
   },
-  
+
   // 256 色背景
   bg256: (n) => `\x1b[48;5;${n}m`,
   // 256 色前景
   fg256: (n) => `\x1b[38;5;${n}m`,
-  
+
   // RGB 真彩色
   bgRGB: (r, g, b) => `\x1b[48;2;${r};${g};${b}m`,
   fgRGB: (r, g, b) => `\x1b[38;2;${r};${g};${b}m`,
@@ -46,6 +46,30 @@ const COLORS = {
 
 // 字符密度图（从稀疏到密集）
 const ASCII_CHARS = ' .:-=+*#%@';
+
+/**
+ * 延迟加载 sharp 模块
+ */
+let _sharp = null;
+async function loadSharp() {
+  if (!_sharp) {
+    const mod = await import('sharp');
+    _sharp = mod.default;
+  }
+  return _sharp;
+}
+
+/**
+ * 延迟加载 Tesseract 模块
+ */
+let _tesseract = null;
+async function loadTesseract() {
+  if (!_tesseract) {
+    const mod = await import('tesseract.js');
+    _tesseract = mod.default;
+  }
+  return _tesseract;
+}
 
 /**
  * 将 RGB 颜色转换为最接近的 ANSI 颜色
@@ -122,8 +146,7 @@ function getContrastChar(bgR, bgG, bgB) {
  */
 async function renderImageToTerminal(imageData, maxWidth = 100, maxHeight = 50) {
   try {
-    const sharpModule = await new Function('return import("sharp")')();
-    const sharp = sharpModule.default;
+    const sharp = await loadSharp();
 
     const image = sharp(imageData);
     const metadata = await image.metadata();
@@ -175,8 +198,7 @@ async function renderImageToTerminal(imageData, maxWidth = 100, maxHeight = 50) 
  */
 async function renderImageWithText(imageData, maxWidth = 100, maxHeight = 50) {
   try {
-    const sharpModule = await new Function('return import("sharp")')();
-    const sharp = sharpModule.default;
+    const sharp = await loadSharp();
 
     const image = sharp(imageData);
     const metadata = await image.metadata();
@@ -256,8 +278,7 @@ function contrastColor(r, g, b) {
  */
 async function createTextMapFromOCR(imageData, targetWidth, targetHeight) {
   try {
-    const sharpModule = await new Function('return import("sharp")')();
-    const sharp = sharpModule.default;
+    const sharp = await loadSharp();
 
     // 获取原始图像尺寸
     const metadata = await sharp(imageData).metadata();
@@ -265,8 +286,7 @@ async function createTextMapFromOCR(imageData, targetWidth, targetHeight) {
     const origHeight = metadata.height;
 
     // 创建 worker 并启用 blocks 输出
-    const TesseractModule = await new Function('return import("tesseract.js")')();
-    const Tesseract = TesseractModule.default;
+    const Tesseract = await loadTesseract();
     const worker = await Tesseract.createWorker('eng+chi_sim', 1, {
       logger: () => {},
     });
@@ -343,8 +363,7 @@ async function createTextMapFromOCR(imageData, targetWidth, targetHeight) {
  */
 async function renderImageAsASCII(imageData, maxWidth = 80, maxHeight = 40) {
   try {
-    const sharpModule = await new Function('return import("sharp")')();
-    const sharp = sharpModule.default;
+    const sharp = await loadSharp();
 
     const image = sharp(imageData);
     const metadata = await image.metadata();
@@ -383,4 +402,4 @@ async function renderImageAsASCII(imageData, maxWidth = 80, maxHeight = 40) {
   }
 }
 
-module.exports = { renderImageToTerminal, renderImageAsASCII, renderImageWithText, COLORS };
+export { renderImageToTerminal, renderImageAsASCII, renderImageWithText, COLORS };

@@ -3,12 +3,12 @@
  * 支持打开/关闭/切换标签页、查看元素、点击按钮、输入文本等功能
  */
 
-const { Client } = require('@modelcontextprotocol/sdk/client/index.js');
-const { StdioClientTransport } = require('@modelcontextprotocol/sdk/client/stdio.js');
-const fs = require('node:fs');
-const path = require('node:path');
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import fs from 'node:fs';
+import path from 'node:path';
 
-class ConsoleBrowser {
+export class ConsoleBrowser {
   constructor(options = {}) {
     this.client = null;
     this.transport = null;
@@ -447,5 +447,3 @@ class ConsoleBrowser {
     console.log('===============================\n');
   }
 }
-
-module.exports = { ConsoleBrowser };

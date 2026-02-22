@@ -4,14 +4,25 @@
  */
 
 /**
+ * 延迟加载 Tesseract 模块
+ */
+let _tesseract = null;
+async function loadTesseract() {
+  if (!_tesseract) {
+    const mod = await import('tesseract.js');
+    _tesseract = mod.default;
+  }
+  return _tesseract;
+}
+
+/**
  * 从截图中提取文字
  * @param {Buffer} imageData - PNG 图像数据
  * @param {string} lang - 识别语言（eng 英文，chi_sim 简体中文）
  */
 async function extractTextFromImage(imageData, lang = 'eng') {
   try {
-    const TesseractModule = await new Function('return import("tesseract.js")')();
-    const Tesseract = TesseractModule.default;
+    const Tesseract = await loadTesseract();
     const result = await Tesseract.recognize(imageData, lang, {
       logger: () => {}, // 禁用日志输出
     });
@@ -28,6 +39,18 @@ async function extractTextFromImage(imageData, lang = 'eng') {
 }
 
 /**
+ * 延迟加载 sharp 模块
+ */
+let _sharp = null;
+async function loadSharp() {
+  if (!_sharp) {
+    const mod = await import('sharp');
+    _sharp = mod.default;
+  }
+  return _sharp;
+}
+
+/**
  * 渲染截图为文字 + 背景混合模式
  * 文字区域显示真实文字，其他区域显示色块
  */
@@ -37,8 +60,7 @@ async function renderImageWithOCR(imageData, maxWidth = 100, maxHeight = 50) {
     const ocrResult = await extractTextFromImage(imageData, 'eng+chi_sim');
 
     // 同时渲染彩色背景
-    const sharpModule = await new Function('return import("sharp")')();
-    const sharp = sharpModule.default;
+    const sharp = await loadSharp();
 
     const image = sharp(imageData);
     const metadata = await image.metadata();
@@ -176,4 +198,4 @@ async function renderTextDetailed(imageData) {
   }
 }
 
-module.exports = { extractTextFromImage, renderImageWithOCR, renderTextOnly, renderTextDetailed };
+export { extractTextFromImage, renderImageWithOCR, renderTextOnly, renderTextDetailed };
