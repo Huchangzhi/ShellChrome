@@ -6,7 +6,9 @@
   "bin": "index.js",
   "scripts": {
     "start": "node index.js",
-    "build": "nexe index.js --target node20 --output dist/shellchrome"
+    "bundle": "esbuild index.js --bundle --platform=node --target=node20 --outfile=dist/bundle.js --external:chrome-devtools-mcp",
+    "build:pkg": "pkg dist/bundle.js --target node20 --output dist/shellchrome",
+    "build:nexe": "nexe dist/bundle.js --target node20 --output dist/shellchrome"
   },
   "keywords": [
     "chrome",
@@ -24,6 +26,8 @@
     "tesseract.js": "^7.0.0"
   },
   "devDependencies": {
-    "nexe": "latest"
+    "esbuild": "latest",
+    "nexe": "latest",
+    "@yao-pkg/pkg": "latest"
   }
 }

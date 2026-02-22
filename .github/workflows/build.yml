@@ -13,7 +13,7 @@ on:
         default: ''
 
 jobs:
-  build-linux:
+  build-pkg-linux:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
@@ -26,23 +26,19 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Install nexe
-        run: npm install -g nexe
+      - name: Bundle with esbuild
+        run: npm run bundle
 
-      - name: Build Linux executable
-        run: |
-          nexe index.js \
-            --target linux-x64-20.x \
-            --output ./dist/shellchrome-linux \
-            --build \
+      - name: Build with pkg
+        run: npx pkg dist/bundle.js --target node20-linux-x64 --output ./dist/shellchrome-pkg-linux
 
-      - name: Upload Linux artifact
+      - name: Upload Linux artifact (pkg)
         uses: actions/upload-artifact@v4
         with:
-          name: shellchrome-linux-x64
-          path: dist/shellchrome-linux
+          name: shellchrome-pkg-linux-x64
+          path: dist/shellchrome-pkg-linux
 
-  build-windows:
+  build-pkg-windows:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -55,46 +51,113 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Install nexe
-        run: npm install -g nexe
+      - name: Bundle with esbuild
+        run: npm run bundle
 
-      - name: Build Windows executable
-        run: |
-          nexe index.js `
-            --target windows-x64-20.x `
-            --output ./dist/shellchrome.exe `
-            --build `
-            --make "-j4"
-        shell: pwsh
+      - name: Build with pkg
+        run: npx pkg dist/bundle.js --target node20-win-x64 --output ./dist/shellchrome-pkg.exe
 
-      - name: Upload Windows artifact
+      - name: Upload Windows artifact (pkg)
         uses: actions/upload-artifact@v4
         with:
-          name: shellchrome-win-x64
-          path: dist/shellchrome.exe
+          name: shellchrome-pkg-win-x64
+          path: dist/shellchrome-pkg.exe
+
+  build-nexe-linux:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Bundle with esbuild
+        run: npm run bundle
+
+      - name: Build with nexe
+        run: |
+          nexe dist/bundle.js \
+            --target linux-x64-20.x \
+            --output ./dist/shellchrome-nexe-linux \
+            --build
+
+      - name: Upload Linux artifact (nexe)
+        uses: actions/upload-artifact@v4
+        with:
+          name: shellchrome-nexe-linux-x64
+          path: dist/shellchrome-nexe-linux
+
+  build-nexe-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Bundle with esbuild
+        run: npm run bundle
+
+      - name: Build with nexe
+        run: |
+          nexe dist/bundle.js `
+            --target windows-x64-20.x `
+            --output ./dist/shellchrome-nexe.exe `
+            --build
+        shell: pwsh
+
+      - name: Upload Windows artifact (nexe)
+        uses: actions/upload-artifact@v4
+        with:
+          name: shellchrome-nexe-win-x64
+          path: dist/shellchrome-nexe.exe
 
   release:
-    needs: [build-linux, build-windows]
+    needs: [build-pkg-linux, build-pkg-windows, build-nexe-linux, build-nexe-windows]
     runs-on: ubuntu-22.04
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.version != ''
     steps:
-      - name: Download Linux artifact
+      - name: Download pkg Linux artifact
         uses: actions/download-artifact@v4
         with:
-          name: shellchrome-linux-x64
+          name: shellchrome-pkg-linux-x64
           path: ./release
 
-      - name: Download Windows artifact
+      - name: Download pkg Windows artifact
         uses: actions/download-artifact@v4
         with:
-          name: shellchrome-win-x64
+          name: shellchrome-pkg-win-x64
+          path: ./release
+
+      - name: Download nexe Linux artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: shellchrome-nexe-linux-x64
+          path: ./release
+
+      - name: Download nexe Windows artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: shellchrome-nexe-win-x64
           path: ./release
 
       - name: Rename artifacts
         run: |
           cd ./release
-          mv shellchrome-linux shellchrome-${{ github.event.inputs.version }}-linux-x64
-          mv shellchrome.exe shellchrome-${{ github.event.inputs.version }}-win-x64.exe
+          mv shellchrome-pkg-linux shellchrome-${{ github.event.inputs.version }}-pkg-linux-x64
+          mv shellchrome-pkg.exe shellchrome-${{ github.event.inputs.version }}-pkg-win-x64.exe
+          mv shellchrome-nexe-linux shellchrome-${{ github.event.inputs.version }}-nexe-linux-x64
+          mv shellchrome-nexe.exe shellchrome-${{ github.event.inputs.version }}-nexe-win-x64.exe
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
@@ -104,7 +167,9 @@ jobs:
           draft: false
           prerelease: false
           files: |
-            ./release/shellchrome-${{ github.event.inputs.version }}-linux-x64
-            ./release/shellchrome-${{ github.event.inputs.version }}-win-x64.exe
+            ./release/shellchrome-${{ github.event.inputs.version }}-pkg-linux-x64
+            ./release/shellchrome-${{ github.event.inputs.version }}-pkg-win-x64.exe
+            ./release/shellchrome-${{ github.event.inputs.version }}-nexe-linux-x64
+            ./release/shellchrome-${{ github.event.inputs.version }}-nexe-win-x64.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
