@@ -3,17 +3,12 @@
  * 支持打开/关闭/切换标签页、查看元素、点击按钮、输入文本等功能
  */
 
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+const { Client } = require('@modelcontextprotocol/sdk/client/index.js');
+const { StdioClientTransport } = require('@modelcontextprotocol/sdk/client/stdio.js');
+const fs = require('node:fs');
+const path = require('node:path');
 
-// ESM 中获取 __dirname
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-export class ConsoleBrowser {
+class ConsoleBrowser {
   constructor(options = {}) {
     this.client = null;
     this.transport = null;
@@ -481,14 +476,13 @@ export class ConsoleBrowser {
     // 先截图到临时文件
     const tempFile = 'temp_screenshot_' + Date.now() + '.png';
     await this.callTool('take_screenshot', { filePath: tempFile, format: 'png' });
-    
+
     // 读取文件
-    const fs = await import('node:fs');
     const buffer = fs.readFileSync(tempFile);
-    
+
     // 删除临时文件
     fs.unlinkSync(tempFile);
-    
+
     return buffer;
   }
 
@@ -563,3 +557,5 @@ export class ConsoleBrowser {
     console.log('===============================\n');
   }
 }
+
+module.exports = { ConsoleBrowser };

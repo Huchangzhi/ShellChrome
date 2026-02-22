@@ -11,9 +11,9 @@
  * - 执行 JavaScript
  */
 
-import readline from 'readline';
-import { ConsoleBrowser } from './browser.js';
-import { renderImageToTerminal, renderImageAsASCII, renderImageWithText, COLORS } from './renderer.js';
+const readline = require('readline');
+const { ConsoleBrowser } = require('./browser');
+const { renderImageToTerminal, renderImageAsASCII, renderImageWithText, COLORS } = require('./renderer');
 
 // 创建 readline 接口
 const rl = readline.createInterface({

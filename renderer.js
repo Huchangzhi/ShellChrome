@@ -53,8 +53,7 @@ const ASCII_CHARS = ' .:-=+*#%@';
 let _sharp = null;
 async function loadSharp() {
   if (!_sharp) {
-    const mod = await import('sharp');
-    _sharp = mod.default;
+    _sharp = require('sharp');
   }
   return _sharp;
 }
@@ -393,4 +392,4 @@ async function renderImageAsASCII(imageData, maxWidth = 80, maxHeight = 40) {
   }
 }
 
-export { renderImageToTerminal, renderImageAsASCII, renderImageWithText, COLORS };
+module.exports = { renderImageToTerminal, renderImageAsASCII, renderImageWithText, COLORS };
