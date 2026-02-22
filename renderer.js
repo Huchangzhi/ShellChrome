@@ -122,7 +122,7 @@ function getContrastChar(bgR, bgG, bgB) {
  */
 async function renderImageToTerminal(imageData, maxWidth = 100, maxHeight = 50) {
   try {
-    const sharpModule = await import('sharp');
+    const sharpModule = await new Function('return import("sharp")')();
     const sharp = sharpModule.default;
 
     const image = sharp(imageData);
@@ -175,7 +175,7 @@ async function renderImageToTerminal(imageData, maxWidth = 100, maxHeight = 50) 
  */
 async function renderImageWithText(imageData, maxWidth = 100, maxHeight = 50) {
   try {
-    const sharpModule = await import('sharp');
+    const sharpModule = await new Function('return import("sharp")')();
     const sharp = sharpModule.default;
 
     const image = sharp(imageData);
@@ -256,7 +256,7 @@ function contrastColor(r, g, b) {
  */
 async function createTextMapFromOCR(imageData, targetWidth, targetHeight) {
   try {
-    const sharpModule = await import('sharp');
+    const sharpModule = await new Function('return import("sharp")')();
     const sharp = sharpModule.default;
 
     // 获取原始图像尺寸
@@ -265,7 +265,7 @@ async function createTextMapFromOCR(imageData, targetWidth, targetHeight) {
     const origHeight = metadata.height;
 
     // 创建 worker 并启用 blocks 输出
-    const TesseractModule = await import('tesseract.js');
+    const TesseractModule = await new Function('return import("tesseract.js")')();
     const Tesseract = TesseractModule.default;
     const worker = await Tesseract.createWorker('eng+chi_sim', 1, {
       logger: () => {},
@@ -343,7 +343,7 @@ async function createTextMapFromOCR(imageData, targetWidth, targetHeight) {
  */
 async function renderImageAsASCII(imageData, maxWidth = 80, maxHeight = 40) {
   try {
-    const sharpModule = await import('sharp');
+    const sharpModule = await new Function('return import("sharp")')();
     const sharp = sharpModule.default;
 
     const image = sharp(imageData);

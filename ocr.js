@@ -10,7 +10,7 @@
  */
 async function extractTextFromImage(imageData, lang = 'eng') {
   try {
-    const TesseractModule = await import('tesseract.js');
+    const TesseractModule = await new Function('return import("tesseract.js")')();
     const Tesseract = TesseractModule.default;
     const result = await Tesseract.recognize(imageData, lang, {
       logger: () => {}, // 禁用日志输出
@@ -37,7 +37,7 @@ async function renderImageWithOCR(imageData, maxWidth = 100, maxHeight = 50) {
     const ocrResult = await extractTextFromImage(imageData, 'eng+chi_sim');
 
     // 同时渲染彩色背景
-    const sharpModule = await import('sharp');
+    const sharpModule = await new Function('return import("sharp")')();
     const sharp = sharpModule.default;
 
     const image = sharp(imageData);

@@ -79,6 +79,9 @@ jobs:
       - name: Bundle with esbuild
         run: npm run bundle
 
+      - name: Install nexe
+        run: npm install -g nexe
+
       - name: Build with nexe
         run: |
           nexe dist/bundle.js \
@@ -107,6 +110,9 @@ jobs:
 
       - name: Bundle with esbuild
         run: npm run bundle
+
+      - name: Install nexe
+        run: npm install -g nexe
 
       - name: Build with nexe
         run: |
