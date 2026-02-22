@@ -7,9 +7,8 @@
   "bin": "index.js",
   "scripts": {
     "start": "node index.js",
-    "bundle": "esbuild index.js --bundle --platform=node --target=node20 --format=esm --outfile=dist/bundle.js --external:sharp --external:tesseract.js",
-    "build:pkg": "pkg dist/bundle.js --target node20 --output dist/shellchrome",
-    "build:nexe": "nexe dist/bundle.js --target node20 --output dist/shellchrome"
+    "bundle": "esbuild index.js --bundle --platform=node --target=node20 --format=cjs --outfile=dist/bundle.cjs --external:sharp --external:child_process --external:fs --external:path --external:url",
+    "build:nexe": "nexe dist/bundle.cjs --target node20 --output dist/shellchrome"
   },
   "keywords": [
     "chrome",
@@ -23,12 +22,10 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.26.0",
     "chrome-devtools-mcp": "^0.17.3",
-    "sharp": "^0.33.0",
-    "tesseract.js": "^7.0.0"
+    "sharp": "^0.33.0"
   },
   "devDependencies": {
     "esbuild": "latest",
-    "nexe": "latest",
-    "@yao-pkg/pkg": "latest"
+    "nexe": "latest"
   }
 }

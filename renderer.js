@@ -60,18 +60,6 @@ async function loadSharp() {
 }
 
 /**
- * 延迟加载 Tesseract 模块
- */
-let _tesseract = null;
-async function loadTesseract() {
-  if (!_tesseract) {
-    const mod = await import('tesseract.js');
-    _tesseract = mod.default;
-  }
-  return _tesseract;
-}
-
-/**
  * 将 RGB 颜色转换为最接近的 ANSI 颜色
  */
 function getClosestAnsiColor(r, g, b) {
@@ -150,10 +138,27 @@ async function renderImageToTerminal(imageData, maxWidth = 100, maxHeight = 50) 
 
     const image = sharp(imageData);
     const metadata = await image.metadata();
+    const origWidth = metadata.width;
+    const origHeight = metadata.height;
+    const aspectRatio = origWidth / origHeight;
 
-    // 计算缩放比例
-    const targetWidth = Math.min(maxWidth, 100);
-    const targetHeight = Math.min(Math.floor(maxHeight * 0.5), 25);
+    // 计算保持比例的缩放尺寸
+    // 终端字符宽高比约 0.5（字符高度是宽度的 2 倍），所以高度要乘以 2 来保持视觉比例
+    let targetWidth, targetHeight;
+    const visualAspectRatio = aspectRatio * 2; // 考虑字符形状的视觉宽高比
+    
+    if (visualAspectRatio > maxWidth / maxHeight) {
+      // 图像更宽，按宽度缩放
+      targetWidth = maxWidth;
+      targetHeight = Math.floor(maxWidth / visualAspectRatio);
+    } else {
+      // 图像更高，按高度缩放
+      targetHeight = maxHeight;
+      targetWidth = Math.floor(targetHeight * visualAspectRatio);
+    }
+
+    targetWidth = Math.min(targetWidth, maxWidth);
+    targetHeight = Math.min(targetHeight, maxHeight);
 
     // 调整图像大小并获取像素
     const resized = await image
@@ -191,21 +196,45 @@ async function renderImageToTerminal(imageData, maxWidth = 100, maxHeight = 50) 
 }
 
 /**
- * 渲染图像（彩色块状 + OCR 文字叠加）
+ * 渲染图像（彩色块状 + 文字叠加）
+ * 使用元素位置信息直接渲染文字，而不是 OCR
  * @param {Buffer} imageData - PNG 图像数据
  * @param {number} maxWidth - 最大宽度（字符数）
  * @param {number} maxHeight - 最大高度（行数）
+ * @param {Array} elements - 页面元素列表（带位置信息）
  */
-async function renderImageWithText(imageData, maxWidth = 100, maxHeight = 50) {
+async function renderImageWithText(imageData, maxWidth = 100, maxHeight = 50, elements = []) {
   try {
     const sharp = await loadSharp();
 
     const image = sharp(imageData);
     const metadata = await image.metadata();
+    const origWidth = metadata.width;
+    const origHeight = metadata.height;
+    const aspectRatio = origWidth / origHeight;
 
-    // 计算缩放比例
-    const targetWidth = Math.min(maxWidth, 100);
-    const targetHeight = Math.min(Math.floor(maxHeight * 0.5), 25);
+    // 计算保持比例的缩放尺寸
+    // 终端字符宽高比约 0.5（字符高度是宽度的 2 倍），所以高度要乘以 2 来保持视觉比例
+    let targetWidth, targetHeight;
+    const visualAspectRatio = aspectRatio * 2; // 考虑字符形状的视觉宽高比
+    
+    console.log(`[原始图像：${origWidth}x${origHeight}, 宽高比：${aspectRatio.toFixed(2)}, 视觉宽高比：${visualAspectRatio.toFixed(2)}]`);
+    console.log(`[最大可用：${maxWidth}x${maxHeight}, 比例：${(maxWidth/maxHeight).toFixed(2)}]`);
+    
+    if (visualAspectRatio > maxWidth / maxHeight) {
+      // 图像更宽，按宽度缩放
+      targetWidth = maxWidth;
+      targetHeight = Math.floor(maxWidth / visualAspectRatio);
+    } else {
+      // 图像更高，按高度缩放
+      targetHeight = maxHeight;
+      targetWidth = Math.floor(targetHeight * visualAspectRatio);
+    }
+
+    targetWidth = Math.min(targetWidth, maxWidth);
+    targetHeight = Math.min(targetHeight, maxHeight);
+
+    console.log(`[渲染尺寸：${targetWidth}x${targetHeight} (最大：${maxWidth}x${maxHeight})]`);
 
     // 调整图像大小并获取像素
     const resized = await image
@@ -214,18 +243,13 @@ async function renderImageWithText(imageData, maxWidth = 100, maxHeight = 50) {
       .raw()
       .toBuffer();
 
-    // 同时进行 OCR 识别
-    let textMap = null;
-    try {
-      textMap = await createTextMapFromOCR(imageData, targetWidth, targetHeight);
-      // 调试输出：显示识别到的文字行数
-      const textLines = Object.keys(textMap).length;
-      console.log(`[OCR 识别到 ${textLines} 行文字]`);
-    } catch (ocrError) {
-      // OCR 失败，只渲染彩色
-      console.log(`OCR 警告：${ocrError.message}`);
-      textMap = {};
-    }
+    // 计算缩放比例
+    const scaleX = targetWidth / origWidth;
+    const scaleY = targetHeight / origHeight;
+
+    // 创建文字位置映射
+    const textMap = createTextMapFromElements(elements, targetWidth, targetHeight, scaleX, scaleY);
+    console.log(`[渲染 ${Object.keys(textMap).length} 行文字]`);
 
     let output = '';
 
@@ -262,6 +286,39 @@ async function renderImageWithText(imageData, maxWidth = 100, maxHeight = 50) {
 }
 
 /**
+ * 从元素位置创建文字映射
+ */
+function createTextMapFromElements(elements, targetWidth, targetHeight, scaleX, scaleY) {
+  const textMap = {};
+  
+  for (const element of elements) {
+    const { text, x, y, width, height } = element;
+    
+    // 转换到目标坐标
+    const startX = Math.floor(x * scaleX);
+    const startY = Math.floor(y * scaleY);
+    const endX = Math.min(targetWidth - 1, Math.floor((x + width) * scaleX));
+    const centerY = Math.floor((y + height / 2) * scaleY);
+    
+    // 跳过超出范围的
+    if (startX >= targetWidth || startY >= targetHeight) continue;
+    
+    // 在映射中放置文字
+    if (!textMap[centerY]) textMap[centerY] = {};
+    
+    const step = Math.max(1, (endX - startX + 1) / text.length);
+    for (let i = 0; i < text.length; i++) {
+      const xPos = Math.floor(startX + i * step);
+      if (xPos >= startX && xPos <= endX && xPos < targetWidth) {
+        textMap[centerY][xPos] = text[i];
+      }
+    }
+  }
+  
+  return textMap;
+}
+
+/**
  * 计算对比色（黑或白）
  */
 function contrastColor(r, g, b) {
@@ -274,91 +331,6 @@ function contrastColor(r, g, b) {
 }
 
 /**
- * 从 OCR 创建文字位置映射
- */
-async function createTextMapFromOCR(imageData, targetWidth, targetHeight) {
-  try {
-    const sharp = await loadSharp();
-
-    // 获取原始图像尺寸
-    const metadata = await sharp(imageData).metadata();
-    const origWidth = metadata.width;
-    const origHeight = metadata.height;
-
-    // 创建 worker 并启用 blocks 输出
-    const Tesseract = await loadTesseract();
-    const worker = await Tesseract.createWorker('eng+chi_sim', 1, {
-      logger: () => {},
-    });
-    
-    // 使用 recognize 并启用 blocks 输出
-    const { data } = await worker.recognize(imageData, {}, { blocks: true });
-    
-    await worker.terminate();
-
-    const textMap = {};
-    
-    // 计算缩放比例
-    const scaleX = targetWidth / origWidth;
-    const scaleY = targetHeight / origHeight;
-
-    let validLines = 0;
-    
-    // 从 blocks 中提取文字
-    if (data.blocks && data.blocks.length > 0) {
-      console.log(`[OCR] Blocks: ${data.blocks.length}`);
-      
-      for (const block of data.blocks) {
-        if (!block.paragraphs) continue;
-        
-        for (const paragraph of block.paragraphs) {
-          if (!paragraph.lines) continue;
-          
-          for (const line of paragraph.lines) {
-            if (!line.words || !line.bbox) continue;
-            
-            const { x0, y0, x1, y1 } = line.bbox;
-            const text = line.words.map(w => w.text).join(' ').trim();
-            
-            if (!text) continue;
-            
-            // 转换到目标坐标
-            const startX = Math.max(0, Math.floor(x0 * scaleX));
-            const endX = Math.min(targetWidth - 1, Math.floor(x1 * scaleX));
-            const centerY = Math.floor(((y0 + y1) / 2) * scaleY);
-            
-            if (validLines < 3) {
-              console.log(`  [行${validLines + 1}] "${text.substring(0, 30)}" 原始：[${x0},${y0}]-[${x1},${y1}] -> 目标：[${startX},${centerY}]-[${endX},${centerY}]`);
-            }
-            
-            if (startX <= endX && centerY >= 0 && centerY < targetHeight) {
-              if (!textMap[centerY]) textMap[centerY] = {};
-              
-              // 放置文字
-              const step = Math.max(1, (endX - startX + 1) / text.length);
-              for (let i = 0; i < text.length; i++) {
-                const x = Math.floor(startX + i * step);
-                if (x >= startX && x <= endX && x < targetWidth) {
-                  textMap[centerY][x] = text[i];
-                }
-              }
-              validLines++;
-            }
-          }
-        }
-      }
-    }
-    
-    console.log(`[有效文字行：${validLines}]`);
-
-    return textMap;
-  } catch (error) {
-    console.log(`OCR 警告：${error.message}`);
-    return {};
-  }
-}
-
-/**
  * 简化的 ASCII 渲染（灰度字符）
  */
 async function renderImageAsASCII(imageData, maxWidth = 80, maxHeight = 40) {
@@ -367,19 +339,38 @@ async function renderImageAsASCII(imageData, maxWidth = 80, maxHeight = 40) {
 
     const image = sharp(imageData);
     const metadata = await image.metadata();
+    const origWidth = metadata.width;
+    const origHeight = metadata.height;
+    const aspectRatio = origWidth / origHeight;
+
+    // 计算保持比例的缩放尺寸
+    // 终端字符宽高比约 0.5（字符高度是宽度的 2 倍），所以高度要乘以 2 来保持视觉比例
+    let targetWidth, targetHeight;
+    const visualAspectRatio = aspectRatio * 2; // 考虑字符形状的视觉宽高比
     
-    // 计算缩放比例
-    const aspectRatio = metadata.height / metadata.width;
-    const targetWidth = Math.min(maxWidth, 80);
-    const targetHeight = Math.min(Math.floor(maxHeight * 0.5), 25);
+    console.log(`[原始图像：${origWidth}x${origHeight}, 宽高比：${aspectRatio.toFixed(2)}, 视觉宽高比：${visualAspectRatio.toFixed(2)}]`);
+    console.log(`[最大可用：${maxWidth}x${maxHeight}, 比例：${(maxWidth/maxHeight).toFixed(2)}]`);
     
+    if (visualAspectRatio > maxWidth / maxHeight) {
+      // 图像更宽，按宽度缩放
+      targetWidth = maxWidth;
+      targetHeight = Math.floor(maxWidth / visualAspectRatio);
+    } else {
+      // 图像更高，按高度缩放
+      targetHeight = maxHeight;
+      targetWidth = Math.floor(targetHeight * visualAspectRatio);
+    }
+
+    targetWidth = Math.min(targetWidth, maxWidth);
+    targetHeight = Math.min(targetHeight, maxHeight);
+
     // 调整为灰度并缩小
     const resized = await image
       .grayscale()
       .resize(targetWidth, targetHeight, { fit: 'fill' })
       .raw()
       .toBuffer();
-    
+
     let output = '';
     
     for (let y = 0; y < targetHeight; y++) {

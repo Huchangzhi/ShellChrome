@@ -14,7 +14,6 @@
 import readline from 'readline';
 import { ConsoleBrowser } from './browser.js';
 import { renderImageToTerminal, renderImageAsASCII, renderImageWithText, COLORS } from './renderer.js';
-import { renderTextOnly } from './ocr.js';
 
 // 创建 readline 接口
 const rl = readline.createInterface({
@@ -42,7 +41,9 @@ const HELP_TEXT = `
 ║    lc                获取可交互元素（按钮/输入框/链接）        ║
 ║    s                 截图保存到 ./image.png                    ║
 ║    sp                截图并在终端显示（彩色色块）              ║
+║    spw               连续截图预览（动态刷新）                  ║
 ║    st                截图并在终端显示（彩色色块 + 文字）       ║
+║    stw               连续截图显示文字（动态刷新）              ║
 ║    sa                截图并在终端显示（ASCII）                 ║
 ╠══════════════════════════════════════════════════════════════╣
 ║  交互操作：                                                   ║
@@ -69,6 +70,7 @@ function showWelcome() {
 ║                                                              ║
 ║       快捷命令：c=点击，t=输入，k=按键，q=关闭                ║
 ║       l=元素，lc=可交互元素，sp=色块，st=色块 + 文字，sa=ASCII  ║
+║       spw=连续色块，stw=连续文字 (按 ESC 退出)                  ║
 ║       ui=UI 模式，h=帮助，x=退出                               ║
 ║                                                              ║
 ╚══════════════════════════════════════════════════════════════╝
@@ -155,8 +157,16 @@ async function executeCommand(input) {
         await handleScreenshotPreview();
         break;
 
+      case 'spw':
+        await handleScreenshotPreviewWatch();
+        break;
+
       case 'st':
         await handleScreenshotWithText();
+        break;
+
+      case 'stw':
+        await handleScreenshotWithTextWatch();
         break;
 
       case 'sa':
@@ -325,13 +335,27 @@ async function handleScreenshot(args) {
 }
 
 /**
+ * 获取终端尺寸（考虑留边）
+ */
+function getTerminalSize() {
+  const cols = process.stdout.columns || 100;
+  const rows = process.stdout.rows || 50;
+  // 留出 2 列边距和 3 行边距（包括命令提示和状态信息）
+  return {
+    width: Math.max(20, cols - 2),
+    height: Math.max(10, rows - 3)
+  };
+}
+
+/**
  * 截图并在终端预览（彩色）
  */
 async function handleScreenshotPreview() {
   console.log('正在截图并渲染...');
   try {
     const imageData = await browser.screenshotBuffer();
-    const rendered = await renderImageToTerminal(imageData, 100, 50);
+    const termSize = getTerminalSize();
+    const rendered = await renderImageToTerminal(imageData, termSize.width, termSize.height);
     console.log(rendered);
   } catch (error) {
     console.log(`${COLORS.fg.red}截图失败：${error.message}${COLORS.reset}`);
@@ -345,7 +369,8 @@ async function handleScreenshotASCII() {
   console.log('正在截图并转换为 ASCII...');
   try {
     const imageData = await browser.screenshotBuffer();
-    const rendered = await renderImageAsASCII(imageData, 80, 40);
+    const termSize = getTerminalSize();
+    const rendered = await renderImageAsASCII(imageData, termSize.width, termSize.height);
     console.log(rendered);
   } catch (error) {
     console.log(`${COLORS.fg.red}截图失败：${error.message}${COLORS.reset}`);
@@ -356,13 +381,138 @@ async function handleScreenshotASCII() {
  * 截图并在终端显示（彩色色块 + 文字）
  */
 async function handleScreenshotWithText() {
-  console.log('正在截图并识别文字...');
+  console.log('正在截图并获取元素位置...');
   try {
+    // 先获取快照
+    await browser.takeSnapshot();
+    const elements = await browser.getElementsForOCR();
+    console.log(`[获取到 ${elements.length} 个元素位置]`);
+
     const imageData = await browser.screenshotBuffer();
-    const rendered = await renderImageWithText(imageData, 100, 50);
+    const termSize = getTerminalSize();
+    const rendered = await renderImageWithText(imageData, termSize.width, termSize.height, elements);
     console.log(rendered);
   } catch (error) {
     console.log(`${COLORS.fg.red}截图失败：${error.message}${COLORS.reset}`);
+  }
+}
+
+/**
+ * 连续截图预览（动态刷新），按 ESC 退出
+ */
+async function handleScreenshotPreviewWatch() {
+  // 设置终端为 raw 模式以监听按键
+  readline.emitKeypressEvents(process.stdin);
+  if (process.stdin.isTTY) {
+    process.stdin.setRawMode(true);
+  }
+  
+  console.log('正在连续截图预览...');
+  console.log('按 [ESC] 退出');
+  
+  let running = true;
+  
+  const keypressHandler = (str, key) => {
+    if (key && key.name === 'escape') {
+      running = false;
+    }
+  };
+  
+  process.stdin.on('keypress', keypressHandler);
+  
+  // 等待 0.5 秒后开始
+  await new Promise(resolve => setTimeout(resolve, 500));
+  
+  try {
+    while (running) {
+      const startTime = Date.now();
+      
+      const imageData = await browser.screenshotBuffer();
+      const termSize = getTerminalSize();
+      const rendered = await renderImageToTerminal(imageData, termSize.width, termSize.height);
+      
+      // 清屏并输出
+      process.stdout.write('\x1b[2J\x1b[H');
+      console.log(`[spw - 按 ESC 退出]`);
+      console.log(rendered);
+      
+      // 计算剩余等待时间
+      const elapsed = Date.now() - startTime;
+      const delay = Math.max(0, 50 - elapsed);
+      
+      if (delay > 0 && running) {
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+  } catch (error) {
+    console.log(`${COLORS.fg.red}截图失败：${error.message}${COLORS.reset}`);
+  } finally {
+    process.stdin.removeListener('keypress', keypressHandler);
+    if (process.stdin.isTTY) {
+      process.stdin.setRawMode(false);
+    }
+    console.log('\n已退出连续预览');
+  }
+}
+
+/**
+ * 连续截图显示文字（动态刷新），按 ESC 退出
+ */
+async function handleScreenshotWithTextWatch() {
+  // 设置终端为 raw 模式以监听按键
+  readline.emitKeypressEvents(process.stdin);
+  if (process.stdin.isTTY) {
+    process.stdin.setRawMode(true);
+  }
+  
+  console.log('正在连续截图显示文字...');
+  console.log('按 [ESC] 退出');
+  
+  let running = true;
+  
+  const keypressHandler = (str, key) => {
+    if (key && key.name === 'escape') {
+      running = false;
+    }
+  };
+  
+  process.stdin.on('keypress', keypressHandler);
+  
+  // 等待 0.5 秒后开始
+  await new Promise(resolve => setTimeout(resolve, 500));
+  
+  try {
+    while (running) {
+      const startTime = Date.now();
+      
+      await browser.takeSnapshot();
+      const elements = await browser.getElementsForOCR();
+      
+      const imageData = await browser.screenshotBuffer();
+      const termSize = getTerminalSize();
+      const rendered = await renderImageWithText(imageData, termSize.width, termSize.height, elements);
+      
+      // 清屏并输出
+      process.stdout.write('\x1b[2J\x1b[H');
+      console.log(`[stw - 按 ESC 退出] [元素：${elements.length}]`);
+      console.log(rendered);
+      
+      // 计算剩余等待时间
+      const elapsed = Date.now() - startTime;
+      const delay = Math.max(0, 50 - elapsed);
+      
+      if (delay > 0 && running) {
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+  } catch (error) {
+    console.log(`${COLORS.fg.red}截图失败：${error.message}${COLORS.reset}`);
+  } finally {
+    process.stdin.removeListener('keypress', keypressHandler);
+    if (process.stdin.isTTY) {
+      process.stdin.setRawMode(false);
+    }
+    console.log('\n已退出连续预览');
   }
 }
 

@@ -7,6 +7,11 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+// ESM 中获取 __dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export class ConsoleBrowser {
   constructor(options = {}) {
@@ -260,14 +265,14 @@ export class ConsoleBrowser {
 
     console.log('\n========== 页面元素列表 ==========');
     const lines = this.lastSnapshot.split('\n');
-    
+
     for (const line of lines) {
       if (line.trim()) {
         // 跳过头部注释
         if (line.startsWith('#')) {
           continue;
         }
-        
+
         // 提取 uid 和元素描述，支持多种格式
         const match = line.match(/uid[=:\s]+([^\s,]+)/i);
         if (match) {
@@ -280,6 +285,117 @@ export class ConsoleBrowser {
       }
     }
     console.log('=====================================\n');
+  }
+
+  /**
+   * 获取用于 OCR 匹配的元素列表（带位置信息）
+   * 只处理：静态文本、按钮文字、输入框提示词
+   * @returns {Promise<Array>} 元素列表
+   */
+  async getElementsForOCR() {
+    try {
+      // 通过 JS 直接获取所有可见元素的文字和位置
+      const response = await this.client.callTool({
+        name: 'evaluate_script',
+        arguments: {
+          function: `() => {
+        const results = [];
+        
+        const selectors = [
+          'button',
+          'input[type="text"]',
+          'input[type="search"]',
+          'input[type="submit"]',
+          'input[type="button"]',
+          'a',
+          'label',
+          'span',
+          'p',
+          'h1, h2, h3, h4, h5, h6',
+          'div',
+          '[role="button"]',
+          '[role="link"]',
+          '[role="heading"]',
+          '[role="text"]',
+        ];
+        
+        const elements = document.querySelectorAll(selectors.join(', '));
+        
+        for (const el of elements) {
+          const rect = el.getBoundingClientRect();
+          
+          if (rect.width === 0 || rect.height === 0) continue;
+          const style = window.getComputedStyle(el);
+          if (style.display === 'none' || style.visibility === 'hidden') continue;
+          
+          let text = '';
+          const tagName = el.tagName.toLowerCase();
+          
+          if (tagName === 'input') {
+            text = el.placeholder || el.value || '';
+          } else if (tagName === 'button' || tagName === 'a') {
+            text = el.textContent.trim();
+          } else {
+            text = Array.from(el.childNodes)
+              .filter(n => n.nodeType === 3)
+              .map(n => n.textContent.trim())
+              .join(' ');
+          }
+          
+          if (!text || text.length < 1 || text.length > 50) continue;
+          if (/^\\d+$/.test(text)) continue;
+          
+          results.push({
+            text: text,
+            x: rect.left,
+            y: rect.top,
+            width: rect.width,
+            height: rect.height
+          });
+        }
+        
+        results.sort((a, b) => {
+          const yDiff = Math.round(a.y / 10) - Math.round(b.y / 10);
+          if (yDiff !== 0) return yDiff;
+          return a.x - b.x;
+        });
+        
+        return results;
+      }`
+        },
+      });
+
+      // 解析响应 - 处理 markdown 格式
+      if (response.content) {
+        for (const item of response.content) {
+          if (item.type === 'text') {
+            const text = item.text;
+            // 尝试从 markdown 中提取 JSON
+            const jsonMatch = text.match(/```json\s*([\s\S]*?)\s*```/);
+            if (jsonMatch) {
+              try {
+                const parsed = JSON.parse(jsonMatch[1]);
+                return parsed;
+              } catch {
+                console.log('解析 JSON 失败');
+              }
+            }
+            // 直接尝试解析
+            try {
+              const parsed = JSON.parse(text);
+              return parsed;
+            } catch {
+              // 忽略
+            }
+          }
+        }
+      }
+      
+      return [];
+    } catch (error) {
+      console.log(`获取元素位置失败：${error.message}`);
+      return [];
+    }
   }
 
   /**
