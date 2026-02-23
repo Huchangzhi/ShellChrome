@@ -2,6 +2,8 @@
 
 基于 Puppeteer 的 Node.js 中文控制台浏览器，支持通过命令行控制 Chrome 浏览器。
 
+
+
 ## 功能特性
 
 - ✅ **标签页管理**：打开、关闭、切换标签页
@@ -15,9 +17,8 @@
 
 ## 环境要求
 
-- Node.js >= 20
-- Google Chrome 浏览器（稳定版）
-- npm
+- Node.js >= 20(开发时需要)
+- Google Chrome 浏览器（稳定版）(运行时需要)
 
 ## 安装
 
@@ -231,13 +232,7 @@ npm run build:nexe
 
 ## 技术原理
 
-本项目基于 `chrome-devtools-mcp` 构建，通过 MCP (Model Context Protocol) 协议与 Chrome DevTools 通信，实现浏览器自动化控制。
-
-核心流程：
-1. 启动 MCP 服务器（chrome-devtools-mcp）
-2. 通过 stdio 传输建立连接
-3. 调用各种工具（tools）控制浏览器
-4. 解析响应并显示结果
+本项目基于 `chrome-devtools-mcp` 源码分析
 
 ## 许可证
 
