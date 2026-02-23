@@ -2,6 +2,10 @@
 
 基于 Puppeteer 的 Node.js 中文控制台浏览器，支持通过命令行控制 Chrome 浏览器。
 
+## 演示
+
+![SnowShot_Video_2026-02-23_14-48-14](https://github.com/user-attachments/assets/5f0583ba-e230-40bf-b871-20e4a723b775)
+
 
 
 ## 功能特性
