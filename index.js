@@ -24,6 +24,9 @@ const rl = readline.createInterface({
 // 浏览器实例
 let browser = null;
 
+// 自动化录制状态
+let recordingState = null; // { name: string, commands: [] } | null
+
 // 命令帮助信息
 const HELP_TEXT = `
 ╔══════════════════════════════════════════════════════════════╗
@@ -51,6 +54,13 @@ const HELP_TEXT = `
 ║    t <uid> <text>    向输入框输入文本                          ║
 ║    k <key>           发送键盘按键 (Enter, Tab, Control+A 等)    ║
 ╠══════════════════════════════════════════════════════════════╣
+║  自动化：                                                     ║
+║    a h               显示自动化帮助                            ║
+║    a s               开始录制自动化（先输入名字）              ║
+║    a e               结束录制                                  ║
+║    a l               列出所有自动化脚本                        ║
+║    a a <编号>        执行指定编号的自动化脚本                  ║
+╠══════════════════════════════════════════════════════════════╣
 ║  其他：                                                       ║
 ║    h / help          显示帮助信息                              ║
 ║    ui                配置 UI 模式（显示/隐藏浏览器窗口）         ║
@@ -65,13 +75,13 @@ function showWelcome() {
   console.log(`
 ╔════════════════════════════════════════════════════════════════════╗
 ║                                                                    ║
-║       🌐  ShellChrome v1.0.0beta.2                                ║
+║       🌐  ShellChrome v1.0.0                                      ║
 ║       基于 Puppeteer                                               ║
 ║                                                                    ║
 ║       快捷命令：c=点击，t=输入，k=按键，q=关闭                        ║
 ║       l=元素，lc=可交互元素，sp=色块，st=色块 + 文字，sa=ASCII        ║
 ║       spw=连续色块，stw=连续文字 (按 ESC 退出)                       ║
-║       ui=UI 模式，h=帮助，x=退出                                    ║
+║       ui=UI 模式，h=帮助，x=退出，a=自动化                           ║
 ║                                                                    ║
 ╚════════════════════════════════════════════════════════════════════╝
 `);
@@ -101,6 +111,18 @@ async function executeCommand(input) {
   const parts = trimmed.split(/\s+/);
   const command = parts[0].toLowerCase();
   const args = parts.slice(1);
+
+  // 录制命令（在 switch 之前记录，确保所有命令都执行并记录）
+  // replay 时不记录，查看命令不记录
+  if (recordingState) {
+    const skipCommands = ['a', 'l', 'lc', 's', 'sp', 'spw', 'st', 'stw', 'sa', 'e', 'els', 'elements'];
+    if (!skipCommands.includes(command)) {
+      recordingState.commands.push({
+        raw: trimmed,
+        timestamp: Date.now(),
+      });
+    }
+  }
 
   try {
     switch (command) {
@@ -244,6 +266,11 @@ async function executeCommand(input) {
         await handleUI(args);
         break;
 
+      // 自动化命令
+      case 'a':
+        await handleAuto(args);
+        break;
+
       default:
         console.log(`未知命令：${command}，输入 'h' 查看帮助`);
     }
@@ -259,7 +286,12 @@ async function handleOpen(args) {
     return;
   }
   const url = args[0];
-  await browser.openPage(url);
+  try {
+    await browser.openPage(url);
+    console.log(`✅ 已打开 ${url}`);
+  } catch (error) {
+    console.log(`❌ 打开失败：${error.message}`);
+  }
 }
 
 async function handleClose(args) {
@@ -870,6 +902,151 @@ async function handleUI(args) {
   console.log('提示：请重启程序以使配置生效（使用 x 退出后重新运行）');
 }
 
+/**
+ * 自动化命令处理
+ */
+async function handleAuto(args) {
+  if (args.length === 0) {
+    console.log('自动化命令用法：');
+    console.log('  a h          - 显示自动化帮助');
+    console.log('  a s          - 开始录制自动化');
+    console.log('  a e          - 结束录制');
+    console.log('  a l          - 列出所有自动化脚本');
+    console.log('  a a <编号>   - 执行指定编号的自动化脚本');
+    return;
+  }
+
+  const subCommand = args[0].toLowerCase();
+
+  switch (subCommand) {
+    case 'h':
+    case 'help':
+      console.log(`
+╔══════════════════════════════════════════════════════════════╗
+║           自动化命令帮助                                      ║
+╠══════════════════════════════════════════════════════════════╣
+║  a h               显示此帮助信息                             ║
+║  a s               开始录制自动化操作                         ║
+║                    输入后会提示输入自动化名字                 ║
+║                    之后记录每一个命令直到 a e                 ║
+║  a e               结束录制并保存自动化脚本                   ║
+║  a l               列出所有自动化脚本（编号 + 备注）          ║
+║  a a <编号>        自动执行指定编号的自动化脚本               ║
+╠══════════════════════════════════════════════════════════════╣
+║  示例：                                                      ║
+║    a s              开始录制，输入名字"登录"                   ║
+║    o luogu.com.cn   打开网页                                  ║
+║    c uid_1          点击元素                                  ║
+║    t uid_2 hello    输入文本                                  ║
+║    a e              结束录制                                  ║
+║    a l              查看自动化列表                            ║
+║    a a 1            执行编号为 1 的自动化                       ║
+╚══════════════════════════════════════════════════════════════╝
+`);
+      break;
+
+    case 's':
+      if (recordingState) {
+        console.log('⚠️ 已经在录制中，请先使用 a e 结束当前录制');
+        return;
+      }
+      // 提示用户输入名字
+      return new Promise((resolve) => {
+        console.log('请输入自动化脚本的名字：');
+        rl.question('> ', (name) => {
+          if (!name || name.trim() === '') {
+            console.log('❌ 名字不能为空');
+            resolve();
+            return;
+          }
+          recordingState = {
+            name: name.trim(),
+            commands: [],
+            startTime: new Date().toISOString(),
+          };
+          console.log(`✅ 已开始录制自动化："${name}"`);
+          console.log('   请执行操作（点击、输入等），使用 a e 结束录制');
+          resolve();
+        });
+      });
+      break;
+
+    case 'e':
+      if (!recordingState) {
+        console.log('⚠️ 当前没有正在录制的自动化');
+        return;
+      }
+      if (recordingState.commands.length === 0) {
+        console.log('⚠️ 录制的命令为空，已取消录制');
+        recordingState = null;
+        return;
+      }
+      // 保存自动化脚本
+      const script = browser.addAutoScript(recordingState.name, recordingState.commands);
+      console.log(`✅ 已保存自动化脚本："${script.name}" (编号：${script.id})`);
+      console.log(`   共录制 ${script.commands.length} 条命令`);
+      recordingState = null;
+      break;
+
+    case 'l':
+      const scripts = browser.loadAutoScripts();
+      if (scripts.length === 0) {
+        console.log('（没有保存的自动化脚本）');
+        return;
+      }
+      console.log('\n========== 自动化脚本列表 ==========');
+      for (const s of scripts) {
+        const cmdCount = s.commands ? s.commands.length : 0;
+        const createdAt = s.createdAt ? new Date(s.createdAt).toLocaleString('zh-CN') : '未知';
+        console.log(`  [${s.id}] ${s.name} - ${cmdCount}条命令 - 创建于：${createdAt}`);
+      }
+      console.log('=====================================\n');
+      console.log('使用 a a <编号> 执行指定的自动化脚本');
+      break;
+
+    case 'a':
+      if (!args[1]) {
+        console.log('用法：a a <编号>');
+        console.log('使用 a l 查看自动化脚本列表');
+        return;
+      }
+      const scriptId = parseInt(args[1]);
+      const scripts2 = browser.loadAutoScripts();
+      const targetScript = scripts2.find(s => s.id === scriptId);
+      if (!targetScript) {
+        console.log(`❌ 找不到编号为 ${scriptId} 的自动化脚本`);
+        console.log('使用 a l 查看自动化脚本列表');
+        return;
+      }
+      console.log(`▶️ 开始执行自动化："${targetScript.name}"`);
+      console.log(`   共 ${targetScript.commands.length} 条命令`);
+      await executeAutoScript(targetScript.commands);
+      console.log(`✅ 自动化执行完成："${targetScript.name}"`);
+      break;
+
+    default:
+      console.log(`未知自动化子命令：${subCommand}`);
+      console.log('使用 a h 查看自动化帮助');
+  }
+}
+
+/**
+ * 执行自动化脚本
+ */
+async function executeAutoScript(commands) {
+  for (let i = 0; i < commands.length; i++) {
+    const cmd = commands[i];
+    console.log(`  [${i + 1}/${commands.length}] 执行：${cmd.raw}`);
+    try {
+      await executeCommand(cmd.raw);
+      // 命令之间等待 1 秒，确保页面响应并让用户看到效果
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    } catch (error) {
+      console.log(`  ⚠️ 命令执行失败：${error.message}`);
+    }
+  }
+}
+
 function showStatus() {
   console.log('\n========== 浏览器状态 ==========');
   console.log(`连接状态：${browser ? '已连接' : '未连接'}`);
@@ -917,7 +1094,11 @@ async function start() {
  */
 function startPrompt() {
   rl.question('🌐 > ', async (input) => {
-    await executeCommand(input);
+    try {
+      await executeCommand(input);
+    } catch (error) {
+      console.error(`❌ 错误：${error.message}`);
+    }
     startPrompt();
   });
 }

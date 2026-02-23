@@ -54,6 +54,47 @@ class ConsoleBrowser {
   }
 
   /**
+   * 加载自动化脚本列表
+   */
+  loadAutoScripts() {
+    try {
+      const autoPath = path.join(process.cwd(), 'auto.json');
+      if (fs.existsSync(autoPath)) {
+        return JSON.parse(fs.readFileSync(autoPath, 'utf-8'));
+      }
+    } catch (error) {
+      console.error('加载自动化脚本失败:', error.message);
+    }
+    return [];
+  }
+
+  /**
+   * 保存自动化脚本列表
+   */
+  saveAutoScripts(scripts) {
+    try {
+      const autoPath = path.join(process.cwd(), 'auto.json');
+      fs.writeFileSync(autoPath, JSON.stringify(scripts, null, 2), 'utf-8');
+      return true;
+    } catch (error) {
+      console.error('保存自动化脚本失败:', error.message);
+      return false;
+    }
+  }
+
+  /**
+   * 添加自动化脚本
+   */
+  addAutoScript(name, commands) {
+    const scripts = this.loadAutoScripts();
+    const id = scripts.length > 0 ? Math.max(...scripts.map(s => s.id)) + 1 : 1;
+    const script = { id, name, commands, createdAt: new Date().toISOString() };
+    scripts.push(script);
+    this.saveAutoScripts(scripts);
+    return script;
+  }
+
+  /**
    * 启动浏览器
    */
   async start() {
