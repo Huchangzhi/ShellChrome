@@ -76,7 +76,7 @@ function showWelcome() {
   console.log(`
 ╔════════════════════════════════════════════════════════════════════╗
 ║                                                                    ║
-║       🌐  ShellChrome v1.0.0                                      ║
+║       🌐  ShellChrome v1.0.1                                      ║
 ║       基于 Puppeteer                                               ║
 ║                                                                    ║
 ║       快捷命令：c=点击，t=输入，k=按键，sl=停顿，q=关闭                ║
