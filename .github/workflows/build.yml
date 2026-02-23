@@ -34,10 +34,12 @@ jobs:
 
       - name: Build with nexe
         run: |
-          nexe dist/bundle.cjs \
+          node scripts/copy-bundle.js
+          nexe bundle.cjs \
             --target linux-x64-20.x \
             --output ./dist/shellchrome-linux \
             --build
+          node scripts/cleanup.js
 
       - name: Upload Linux artifact
         uses: actions/upload-artifact@v4
@@ -66,11 +68,13 @@ jobs:
 
       - name: Build with nexe
         run: |
-          nexe dist/bundle.cjs `
+          node scripts/copy-bundle.js
+          nexe bundle.cjs `
             --target windows-x64-20.x `
             --output ./dist/shellchrome.exe `
             --build `
             --make "-j4"
+          node scripts/cleanup.js
         shell: pwsh
 
       - name: Upload Windows artifact

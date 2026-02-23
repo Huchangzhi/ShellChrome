@@ -63,17 +63,17 @@ const HELP_TEXT = `
  */
 function showWelcome() {
   console.log(`
-╔══════════════════════════════════════════════════════════════╗
-║                                                              ║
-║       🌐  ShellChrome v1.0.0                                ║
-║       基于 Puppeteer                                         ║
-║                                                              ║
-║       快捷命令：c=点击，t=输入，k=按键，q=关闭                ║
-║       l=元素，lc=可交互元素，sp=色块，st=色块 + 文字，sa=ASCII  ║
-║       spw=连续色块，stw=连续文字 (按 ESC 退出)                  ║
-║       ui=UI 模式，h=帮助，x=退出                               ║
-║                                                              ║
-╚══════════════════════════════════════════════════════════════╝
+╔════════════════════════════════════════════════════════════════════╗
+║                                                                    ║
+║       🌐  ShellChrome v1.0.0beta.2                                ║
+║       基于 Puppeteer                                               ║
+║                                                                    ║
+║       快捷命令：c=点击，t=输入，k=按键，q=关闭                        ║
+║       l=元素，lc=可交互元素，sp=色块，st=色块 + 文字，sa=ASCII        ║
+║       spw=连续色块，stw=连续文字 (按 ESC 退出)                       ║
+║       ui=UI 模式，h=帮助，x=退出                                    ║
+║                                                                    ║
+╚════════════════════════════════════════════════════════════════════╝
 `);
 }
 
@@ -547,11 +547,12 @@ async function handleScreenshot(args) {
 
 /**
  * 获取终端尺寸（考虑留边）
+ * 返回原始终端尺寸，由渲染函数自行处理字符宽度
  */
 function getTerminalSize() {
   const cols = process.stdout.columns || 100;
   const rows = process.stdout.rows || 50;
-  // 留出 2 列边距和 3 行边距（包括命令提示和状态信息）
+  // 留出边距
   return {
     width: Math.max(20, cols - 2),
     height: Math.max(10, rows - 3)

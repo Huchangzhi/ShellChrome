@@ -25,7 +25,8 @@ class ConsoleBrowser {
    */
   loadConfig() {
     try {
-      const configPath = path.join(__dirname, 'config.json');
+      // 使用当前工作目录而不是 __dirname，以支持 nexe 打包后的环境
+      const configPath = path.join(process.cwd(), 'config.json');
       if (fs.existsSync(configPath)) {
         return JSON.parse(fs.readFileSync(configPath, 'utf-8'));
       }
@@ -40,7 +41,8 @@ class ConsoleBrowser {
    */
   saveConfig(config) {
     try {
-      const configPath = path.join(__dirname, 'config.json');
+      // 使用当前工作目录而不是 __dirname，以支持 nexe 打包后的环境
+      const configPath = path.join(process.cwd(), 'config.json');
       const currentConfig = this.loadConfig();
       const newConfig = { ...currentConfig, ...config };
       fs.writeFileSync(configPath, JSON.stringify(newConfig, null, 2), 'utf-8');

@@ -128,6 +128,7 @@ function getContrastChar(bgR, bgG, bgB) {
 
 /**
  * 将图像数据转换为终端可显示的彩色 ASCII 艺术（纯彩色块，无文字）
+ * 注意：每个像素用 2 个字符宽度显示（两个空格）
  * @param {Buffer} imageData - PNG 图像数据
  * @param {number} maxWidth - 最大宽度（字符数）
  * @param {number} maxHeight - 最大高度（行数）
@@ -142,23 +143,25 @@ async function renderImageToTerminal(imageData, maxWidth = 100, maxHeight = 50) 
     const origHeight = image.bitmap.height;
     const aspectRatio = origWidth / origHeight;
 
+    // 每个像素占 2 个字符宽度，所以最大宽度要除以 2
+    const maxPixelWidth = Math.floor(maxWidth / 2);
+
     // 计算保持比例的缩放尺寸
     // 终端字符宽高比约 0.5（字符高度是宽度的 2 倍），所以高度要乘以 2 来保持视觉比例
     const visualAspectRatio = aspectRatio * 2;
 
-    let targetWidth, targetHeight;
-    if (visualAspectRatio > maxWidth / maxHeight) {
-      // 图像更宽，按宽度缩放
-      targetWidth = maxWidth;
-      targetHeight = Math.round(maxWidth / visualAspectRatio);
-    } else {
-      // 图像更高，按高度缩放
+    // 先按宽度缩放
+    let targetWidth = maxPixelWidth;
+    let targetHeight = Math.round(maxPixelWidth / visualAspectRatio);
+    
+    // 如果高度超出，按高度重新缩放
+    if (targetHeight > maxHeight) {
       targetHeight = maxHeight;
       targetWidth = Math.round(targetHeight * visualAspectRatio);
     }
-
-    // 确保不超过最大尺寸
-    targetWidth = Math.min(targetWidth, maxWidth);
+    
+    // 确保不超过最大尺寸（双重检查）
+    targetWidth = Math.min(targetWidth, maxPixelWidth);
     targetHeight = Math.min(targetHeight, maxHeight);
 
     // 调整图像大小
@@ -166,7 +169,7 @@ async function renderImageToTerminal(imageData, maxWidth = 100, maxHeight = 50) 
 
     let output = '';
 
-    // 遍历每个像素，只显示色块
+    // 遍历每个像素，只显示色块（每个像素占 2 个字符宽度）
     for (let y = 0; y < targetHeight; y++) {
       for (let x = 0; x < targetWidth; x++) {
         const pixel = image.getPixelColor(x, y);
@@ -179,7 +182,7 @@ async function renderImageToTerminal(imageData, maxWidth = 100, maxHeight = 50) 
           // 透明像素
           output += '  ';
         } else {
-          // 显示色块
+          // 显示色块（2 个空格）
           output += `\x1b[48;2;${r};${g};${b}m  \x1b[0m`;
         }
       }
@@ -195,6 +198,7 @@ async function renderImageToTerminal(imageData, maxWidth = 100, maxHeight = 50) 
 /**
  * 渲染图像（彩色块状 + 文字叠加）
  * 使用元素位置信息直接渲染文字，而不是 OCR
+ * 注意：每个像素用 2 个字符宽度显示（两个空格）
  * @param {Buffer} imageData - PNG 图像数据
  * @param {number} maxWidth - 最大宽度（字符数）
  * @param {number} maxHeight - 最大高度（行数）
@@ -210,23 +214,25 @@ async function renderImageWithText(imageData, maxWidth = 100, maxHeight = 50, el
     const origHeight = image.bitmap.height;
     const aspectRatio = origWidth / origHeight;
 
+    // 每个像素占 2 个字符宽度，所以最大宽度要除以 2
+    const maxPixelWidth = Math.floor(maxWidth / 2);
+
     // 计算保持比例的缩放尺寸
     // 终端字符宽高比约 0.5（字符高度是宽度的 2 倍），所以高度要乘以 2 来保持视觉比例
     const visualAspectRatio = aspectRatio * 2;
 
-    let targetWidth, targetHeight;
-    if (visualAspectRatio > maxWidth / maxHeight) {
-      // 图像更宽，按宽度缩放
-      targetWidth = maxWidth;
-      targetHeight = Math.round(maxWidth / visualAspectRatio);
-    } else {
-      // 图像更高，按高度缩放
+    // 先按宽度缩放
+    let targetWidth = maxPixelWidth;
+    let targetHeight = Math.round(maxPixelWidth / visualAspectRatio);
+    
+    // 如果高度超出，按高度重新缩放
+    if (targetHeight > maxHeight) {
       targetHeight = maxHeight;
       targetWidth = Math.round(targetHeight * visualAspectRatio);
     }
-
-    // 确保不超过最大尺寸
-    targetWidth = Math.min(targetWidth, maxWidth);
+    
+    // 确保不超过最大尺寸（双重检查）
+    targetWidth = Math.min(targetWidth, maxPixelWidth);
     targetHeight = Math.min(targetHeight, maxHeight);
 
     // 调整图像大小
@@ -336,18 +342,17 @@ async function renderImageAsASCII(imageData, maxWidth = 80, maxHeight = 40) {
     // 终端字符宽高比约 0.5（字符高度是宽度的 2 倍），所以高度要乘以 2 来保持视觉比例
     const visualAspectRatio = aspectRatio * 2;
 
-    let targetWidth, targetHeight;
-    if (visualAspectRatio > maxWidth / maxHeight) {
-      // 图像更宽，按宽度缩放
-      targetWidth = maxWidth;
-      targetHeight = Math.round(maxWidth / visualAspectRatio);
-    } else {
-      // 图像更高，按高度缩放
+    // 先按宽度缩放
+    let targetWidth = maxWidth;
+    let targetHeight = Math.round(maxWidth / visualAspectRatio);
+    
+    // 如果高度超出，按高度重新缩放
+    if (targetHeight > maxHeight) {
       targetHeight = maxHeight;
       targetWidth = Math.round(targetHeight * visualAspectRatio);
     }
-
-    // 确保不超过最大尺寸
+    
+    // 确保不超过最大尺寸（双重检查）
     targetWidth = Math.min(targetWidth, maxWidth);
     targetHeight = Math.min(targetHeight, maxHeight);
 
