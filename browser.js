@@ -787,18 +787,23 @@ class ConsoleBrowser {
    * 点击元素
    */
   async click(uid) {
+    // 自动获取快照（如果还没有）
+    if (!this.lastSnapshot || !this.snapshotIdToNode.has(uid)) {
+      await this.takeSnapshot();
+    }
+
     const handle = await this.getElementByUid(uid);
     try {
       // 先滚动到元素位置
       await handle.evaluate(el => el.scrollIntoView({ behavior: 'auto', block: 'center' }));
       // 等待一小段时间让滚动完成
       await new Promise(resolve => setTimeout(resolve, 100));
-      
+
       // 检查是否是链接（可能在新标签页打开）
       const isLink = await handle.evaluate(el => el.tagName === 'A');
       const target = await handle.evaluate(el => el.target);
       const isOpenInNewTab = target === '_blank';
-      
+
       // 尝试多种点击方式（按优先级）
       try {
         // 方式 1：使用 evaluate 触发点击事件（最直接）
@@ -817,7 +822,7 @@ class ConsoleBrowser {
           }
         }
       }
-      
+
       // 如果是新标签页打开的链接，等待并切换到新标签页
       if (isLink && isOpenInNewTab) {
         await new Promise(resolve => setTimeout(resolve, 500));
@@ -828,7 +833,7 @@ class ConsoleBrowser {
           this.currentPage = newPage;
         }
       }
-      
+
       return { text: `已点击元素 ${uid}` };
     } finally {
       await handle.dispose();
@@ -839,6 +844,11 @@ class ConsoleBrowser {
    * 输入文本（先清空再输入）
    */
   async fill(uid, text) {
+    // 自动获取快照（如果还没有）
+    if (!this.lastSnapshot || !this.snapshotIdToNode.has(uid)) {
+      await this.takeSnapshot();
+    }
+
     const handle = await this.getElementByUid(uid);
     try {
       // 先清空输入框
@@ -871,6 +881,11 @@ class ConsoleBrowser {
    * 悬停在元素上
    */
   async hover(uid) {
+    // 自动获取快照（如果还没有）
+    if (!this.lastSnapshot || !this.snapshotIdToNode.has(uid)) {
+      await this.takeSnapshot();
+    }
+
     const handle = await this.getElementByUid(uid);
     try {
       await handle.hover();

@@ -53,6 +53,7 @@ const HELP_TEXT = `
 ║    c <uid>           点击元素                                  ║
 ║    t <uid> <text>    向输入框输入文本                          ║
 ║    k <key>           发送键盘按键 (Enter, Tab, Control+A 等)    ║
+║    sl <秒>           停顿指定秒数 (例如：sl 1.5)                ║
 ╠══════════════════════════════════════════════════════════════╣
 ║  自动化：                                                     ║
 ║    a h               显示自动化帮助                            ║
@@ -78,7 +79,7 @@ function showWelcome() {
 ║       🌐  ShellChrome v1.0.0                                      ║
 ║       基于 Puppeteer                                               ║
 ║                                                                    ║
-║       快捷命令：c=点击，t=输入，k=按键，q=关闭                        ║
+║       快捷命令：c=点击，t=输入，k=按键，sl=停顿，q=关闭                ║
 ║       l=元素，lc=可交互元素，sp=色块，st=色块 + 文字，sa=ASCII        ║
 ║       spw=连续色块，stw=连续文字 (按 ESC 退出)                       ║
 ║       ui=UI 模式，h=帮助，x=退出，a=自动化                           ║
@@ -239,6 +240,11 @@ async function executeCommand(input) {
 
       case 'hover':
         await handleHover(args);
+        break;
+
+      case 'sleep':
+      case 'sl':
+        await handleSleep(args);
         break;
 
       case 'wait':
@@ -796,6 +802,26 @@ async function handleHover(args) {
   console.log('✅ 悬停完成');
 }
 
+/**
+ * 停顿命令（sleep）
+ */
+async function handleSleep(args) {
+  if (!args[0]) {
+    console.log('用法：sl <秒数>');
+    console.log('示例：');
+    console.log('  sl 1    - 停顿 1 秒');
+    console.log('  sl 2.5  - 停顿 2.5 秒');
+    return;
+  }
+  const seconds = parseFloat(args[0]);
+  if (isNaN(seconds) || seconds < 0) {
+    console.log('❌ 请输入有效的秒数');
+    return;
+  }
+  await new Promise(resolve => setTimeout(resolve, seconds * 1000));
+  console.log(`✅ 已停顿 ${seconds} 秒`);
+}
+
 async function handlePress(args) {
   if (!args[0]) {
     console.log('用法：press <key>');
@@ -1109,7 +1135,12 @@ function startPrompt() {
 async function shutdown() {
   console.log('\n正在关闭浏览器...');
   if (browser) {
-    await browser.close();
+    try {
+      await browser.close();
+    } catch (error) {
+      // 忽略关闭时的错误（临时目录清理问题）
+      console.log('浏览器已关闭');
+    }
   }
   rl.close();
   console.log('👋 再见！');
