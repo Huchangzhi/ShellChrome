@@ -38,6 +38,8 @@ const HELP_TEXT = `
 ║    p                 显示所有标签页列表                        ║
 ║    w <id>            切换到指定标签页                          ║
 ║    n <url>           在当前页导航                              ║
+║    ba                返回上一页 (等同于 Alt+Left)              ║
+║    hi/history        打开浏览器历史记录页面                    ║
 ╠══════════════════════════════════════════════════════════════╣
 ║  页面查看：                                                   ║
 ║    l                 获取所有元素（自动先获取快照）            ║
@@ -76,11 +78,11 @@ function showWelcome() {
   console.log(`
 ╔════════════════════════════════════════════════════════════════════╗
 ║                                                                    ║
-║       🌐  ShellChrome v1.0.1                                      ║
+║       🌐  ShellChrome v1.0.2                                      ║
 ║       基于 Puppeteer                                               ║
 ║                                                                    ║
-║       快捷命令：c=点击，t=输入，k=按键，sl=停顿，q=关闭                ║
-║       l=元素，lc=可交互元素，sp=色块，st=色块 + 文字，sa=ASCII        ║
+║       快捷命令：c=点击，t=输入，k=按键，sl=停顿，q=关闭，ba=返回       ║
+║       l=元素，lc=可交互元素，sp=色块，st=色块 + 文字，sa=ASCII，hi=历史║
 ║       spw=连续色块，stw=连续文字 (按 ESC 退出)                       ║
 ║       ui=UI 模式，h=帮助，x=退出，a=自动化                           ║
 ║                                                                    ║
@@ -176,6 +178,16 @@ async function executeCommand(input) {
       case 'go':
       case 'n':
         await handleNavigate(args);
+        break;
+
+      case 'back':
+      case 'ba':
+        await handleBack();
+        break;
+
+      case 'history':
+      case 'hi':
+        await handleHistory();
         break;
 
       // 页面查看
@@ -327,6 +339,16 @@ async function handleNavigate(args) {
     return;
   }
   await browser.navigate(args[0]);
+}
+
+async function handleBack() {
+  await browser.goBack();
+  console.log('✅ 已返回上一页');
+}
+
+async function handleHistory() {
+  await browser.openHistory();
+  console.log('✅ 已打开历史记录页面');
 }
 
 async function handleSnapshot() {
@@ -772,7 +794,7 @@ async function handleClick(args) {
     return;
   }
   await browser.click(args[0]);
-  console.log('✅ 点击完成');
+  console.log('✅ 点击完成，若未反应，有可能是网页正在加载,可稍后使用p获取');
 }
 
 async function handleFill(args) {

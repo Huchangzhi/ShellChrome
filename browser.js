@@ -232,6 +232,29 @@ class ConsoleBrowser {
   }
 
   /**
+   * 返回上一页
+   */
+  async goBack() {
+    if (!this.currentPage) {
+      throw new Error('没有选中的页面');
+    }
+    await this.currentPage.goBack({ waitUntil: 'domcontentloaded', timeout: 30000 });
+    await this.refreshPages();
+  }
+
+  /**
+   * 打开历史记录页面
+   */
+  async openHistory() {
+    if (!this.currentPage) {
+      throw new Error('没有选中的页面');
+    }
+    // 直接导航到 chrome://history
+    await this.currentPage.goto('chrome://history', { waitUntil: 'domcontentloaded', timeout: 30000 });
+    await this.refreshPages();
+  }
+
+  /**
    * 关闭标签页
    */
   async closePage(pageId) {
