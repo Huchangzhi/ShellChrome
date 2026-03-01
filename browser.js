@@ -893,6 +893,97 @@ class ConsoleBrowser {
   }
 
   /**
+   * 根据文字搜索元素并返回 UID
+   * @param {string} text - 要搜索的文字
+   * @param {number} index - 编号（从1开始），默认1
+   * @param {string} type - 类型：'click' 或 'fill'，默认 'click'
+   * @returns {string} 找到的元素的 UID
+   */
+  async findElementByText(text, index = 1, type = 'click') {
+    // 自动获取快照（如果还没有）
+    if (!this.lastSnapshot || this.snapshotIdToNode.size === 0) {
+      await this.takeSnapshot();
+    }
+
+    const targetRoles = type === 'fill' 
+      ? ['textbox', 'searchbox', 'combobox', 'listbox']
+      : ['button', 'link', 'menuitem', 'tab', 'treeitem', 'checkbox', 'radio', 'switch'];
+
+    const matches = [];
+    
+    // 遍历所有元素，查找包含指定文字的
+    for (const [uid, info] of this.snapshotIdToNode) {
+      const name = info.name || '';
+      if (name && name.includes(text)) {
+        // 检查角色是否符合
+        const role = info.role || '';
+        if (type === 'fill') {
+          // fill 模式：只找输入框
+          if (targetRoles.includes(role) || role === 'textbox' || role === 'searchbox') {
+            matches.push({ uid, name, role, length: name.length });
+          }
+        } else {
+          // click 模式：优先可交互元素
+          if (targetRoles.includes(role)) {
+            matches.push({ uid, name, role, length: name.length, priority: 1 });
+          } else if (name === text) {
+            // 精确匹配，提升优先级
+            matches.push({ uid, name, role, length: name.length, priority: 2 });
+          } else {
+            matches.push({ uid, name, role, length: name.length, priority: 0 });
+          }
+        }
+      }
+    }
+
+    if (matches.length === 0) {
+      // 尝试模糊匹配（大小写不敏感）
+      const lowerText = text.toLowerCase();
+      for (const [uid, info] of this.snapshotIdToNode) {
+        const name = (info.name || '').toLowerCase();
+        if (name && name.includes(lowerText)) {
+          const role = info.role || '';
+          if (type === 'fill') {
+            if (targetRoles.includes(role) || role === 'textbox' || role === 'searchbox') {
+              matches.push({ uid, name: info.name || '', role, length: (info.name || '').length });
+            }
+          } else {
+            if (targetRoles.includes(role)) {
+              matches.push({ uid, name: info.name || '', role, length: (info.name || '').length, priority: 1 });
+            } else if (name === lowerText) {
+              matches.push({ uid, name: info.name || '', role, length: (info.name || '').length, priority: 2 });
+            } else {
+              matches.push({ uid, name: info.name || '', role, length: (info.name || '').length, priority: 0 });
+            }
+          }
+        }
+      }
+    }
+
+    if (matches.length === 0) {
+      throw new Error(`未找到包含 "${text}" 的元素`);
+    }
+
+    // 排序：click模式优先按priority，再按length；fill模式按length
+    if (type === 'click') {
+      matches.sort((a, b) => {
+        if (b.priority !== a.priority) return b.priority - a.priority;
+        return a.length - b.length;
+      });
+    } else {
+      matches.sort((a, b) => a.length - b.length);
+    }
+
+    // 如果没有指定编号或编号超出范围，使用1
+    const idx = Math.min(Math.max(1, index), matches.length);
+    const selected = matches[idx - 1];
+
+    console.log(`找到 ${matches.length} 个匹配元素，选择第 ${idx} 个：${selected.name} [${selected.uid}]`);
+
+    return selected.uid;
+  }
+
+  /**
    * 按下键盘按键
    */
   async pressKey(key) {

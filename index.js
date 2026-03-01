@@ -53,7 +53,9 @@ const HELP_TEXT = `
 ╠══════════════════════════════════════════════════════════════╣
 ║  交互操作：                                                   ║
 ║    c <uid>           点击元素                                  ║
+║    fc <文字> [编号]   点击包含文字的元素                        ║
 ║    t <uid> <text>    向输入框输入文本                          ║
+║    ft <文字> <文本>  向包含文字的输入框输入                    ║
 ║    k <key>           发送键盘按键 (Enter, Tab, Control+A 等)    ║
 ║    sl <秒>           停顿指定秒数 (例如：sl 1.5)                ║
 ╠══════════════════════════════════════════════════════════════╣
@@ -78,13 +80,14 @@ function showWelcome() {
   console.log(`
 ╔════════════════════════════════════════════════════════════════════╗
 ║                                                                    ║
-║       🌐  ShellChrome v1.0.2                                      ║
+║       🌐  ShellChrome v1.0.3                                      ║
 ║       基于 Puppeteer                                               ║
 ║                                                                    ║
 ║       快捷命令：c=点击，t=输入，k=按键，sl=停顿，q=关闭，ba=返回       ║
 ║       l=元素，lc=可交互元素，sp=色块，st=色块 + 文字，sa=ASCII，hi=历史║
 ║       spw=连续色块，stw=连续文字 (按 ESC 退出)                       ║
-║       ui=UI 模式，h=帮助，x=退出，a=自动化                           ║
+║       fc=点击文字，ft=输入到文字，ui=UI 模式                         ║
+║       h=帮助，x=退出，a=自动化                                         ║
 ║                                                                    ║
 ╚════════════════════════════════════════════════════════════════════╝
 `);
@@ -243,6 +246,14 @@ async function executeCommand(input) {
       case 'f':
       case 't':
         await handleFill(args);
+        break;
+
+      case 'fc':
+        await handleFindClick(args);
+        break;
+
+      case 'ft':
+        await handleFindFill(args);
         break;
 
       case 'key':
@@ -809,6 +820,53 @@ async function handleFill(args) {
   const text = args.slice(1).join(' ');
   try {
     await browser.fill(uid, text);
+    console.log('✅ 输入完成');
+  } catch (error) {
+    console.log(`❌ 输入失败：${error.message}`);
+  }
+}
+
+/**
+ * 根据文字查找并点击元素
+ * fc <文字> [编号]
+ */
+async function handleFindClick(args) {
+  if (!args[0]) {
+    console.log('用法：fc <文字> [编号]');
+    console.log('示例：');
+    console.log('  fc 登录      - 点击包含"登录"的元素（默认第1个）');
+    console.log('  fc 登录 2    - 点击包含"登录"的第2个元素');
+    return;
+  }
+  const text = args[0];
+  const index = args[1] ? parseInt(args[1]) : 1;
+  try {
+    const uid = await browser.findElementByText(text, index, 'click');
+    await browser.click(uid);
+    console.log('✅ 点击完成');
+  } catch (error) {
+    console.log(`❌ 点击失败：${error.message}`);
+  }
+}
+
+/**
+ * 根据文字查找输入框并输入文本
+ * ft <文字> <输入文本> [编号]
+ */
+async function handleFindFill(args) {
+  if (args.length < 2) {
+    console.log('用法：ft <文字> <输入文本> [编号]');
+    console.log('示例：');
+    console.log('  ft 用户名 zhangsan  - 向包含"用户名"的输入框输入文本');
+    console.log('  ft 用户名 zhangsan 2 - 向包含"用户名"的第2个输入框输入文本');
+    return;
+  }
+  const text = args[0];
+  const inputText = args[1];
+  const index = args[2] ? parseInt(args[2]) : 1;
+  try {
+    const uid = await browser.findElementByText(text, index, 'fill');
+    await browser.fill(uid, inputText);
     console.log('✅ 输入完成');
   } catch (error) {
     console.log(`❌ 输入失败：${error.message}`);
