@@ -396,13 +396,14 @@ async function handleElementsAuto() {
 
   // 解析快照行
   const lines = browser.lastSnapshot.split('\n').filter(line => line.trim());
-  
-  // 计算每页显示的行数（终端高度 - 5 行用于标题和提示）
+
+  // 获取终端尺寸
   const termRows = process.stdout.rows || 30;
-  const pageSize = Math.max(5, termRows - 5);
-  
-  let currentPage = 0;
-  const totalPages = Math.ceil(lines.length / pageSize);
+  const termCols = process.stdout.columns || 120;
+
+  // 预留行数用于标题和提示
+  const reservedRows = 5;
+  const availableRows = termRows - reservedRows;
 
   // 设置终端为 raw 模式以监听按键
   readline.emitKeypressEvents(process.stdin);
@@ -412,14 +413,64 @@ async function handleElementsAuto() {
 
   let running = true;
 
+  /**
+   * 计算一行文本在终端中实际占用的行数（考虑自动换行）
+   */
+  const calculateWrappedRows = (text, cols) => {
+    if (!text || text.length === 0) return 1;
+    return Math.ceil(text.length / cols);
+  };
+
+  /**
+   * 从当前索引开始，计算最多能显示多少个元素（不超过可用行数）
+   */
+  const calculatePageSize = (startIndex, linesArray) => {
+    let usedRows = 0;
+    let count = 0;
+    for (let i = startIndex; i < linesArray.length; i++) {
+      let output = linesArray[i];
+      // 如果是 link 行，尝试添加 href（截断后的长度）
+      const linkMatch = linesArray[i].match(/link:\s*([^\[\n]+)/);
+      if (linkMatch) {
+        const linkText = linkMatch[1].trim();
+        const href = linkHrefs[linkText];
+        if (href) {
+          const maxHrefLength = Math.max(20, termCols - output.length - 5);
+          const shortHref = href.length > maxHrefLength ? href.substring(0, maxHrefLength - 3) + '...' : href;
+          output += ` → ${shortHref}`;
+        }
+      }
+      const rowsNeeded = calculateWrappedRows(output, termCols);
+      if (usedRows + rowsNeeded > availableRows) {
+        break;
+      }
+      usedRows += rowsNeeded;
+      count++;
+    }
+    return Math.max(1, count);
+  };
+
+  // 预计算每页的起始位置和元素数量
+  const pageBreaks = [];
+  let currentIndex = 0;
+  while (currentIndex < lines.length) {
+    const count = calculatePageSize(currentIndex, lines);
+    pageBreaks.push({ start: currentIndex, count });
+    currentIndex += count;
+  }
+
+  const totalPages = pageBreaks.length;
+  let currentPage = 0;
+
   const showPage = (page) => {
     console.clear();
-    const start = page * pageSize;
-    const end = Math.min(start + pageSize, lines.length);
+    const pageBreak = pageBreaks[page];
+    const start = pageBreak.start;
+    const end = Math.min(start + pageBreak.count, lines.length);
     const pageLines = lines.slice(start, end);
 
     console.log(`\n========== 元素列表 (第 ${page + 1}/${totalPages} 页) ==========`);
-    
+
     for (const line of pageLines) {
       let output = line;
       // 如果是 link 行，尝试添加 href
@@ -428,13 +479,18 @@ async function handleElementsAuto() {
         const linkText = linkMatch[1].trim();
         const href = linkHrefs[linkText];
         if (href) {
-          const shortHref = href.length > 50 ? href.substring(0, 47) + '...' : href;
-          output = line + ` → ${shortHref}`;
+          const maxHrefLength = Math.max(20, termCols - output.length - 5);
+          const shortHref = href.length > maxHrefLength ? href.substring(0, maxHrefLength - 3) + '...' : href;
+          output += ` → ${shortHref}`;
         }
+      }
+      // 限制行长度，超出部分截断，避免终端自动换行导致显示混乱
+      if (output.length >= termCols) {
+        output = output.substring(0, termCols - 3) + '...';
       }
       console.log(output);
     }
-    
+
     console.log('=====================================\n');
     console.log('[Enter] 下一页  [\\] 上一页  [ESC] 退出');
   };
@@ -544,12 +600,13 @@ async function handleInteractiveElements() {
     return;
   }
 
-  // 计算每页显示的行数
+  // 获取终端尺寸
   const termRows = process.stdout.rows || 30;
-  const pageSize = Math.max(5, termRows - 5);
-  
-  let currentPage = 0;
-  const totalPages = Math.ceil(interactiveLines.length / pageSize);
+  const termCols = process.stdout.columns || 120;
+
+  // 预留行数用于标题和提示
+  const reservedRows = 5;
+  const availableRows = termRows - reservedRows;
 
   // 设置终端为 raw 模式
   readline.emitKeypressEvents(process.stdin);
@@ -559,18 +616,84 @@ async function handleInteractiveElements() {
 
   let running = true;
 
+  /**
+   * 计算一行文本在终端中实际占用的行数（考虑自动换行）
+   */
+  const calculateWrappedRows = (text, cols) => {
+    if (!text || text.length === 0) return 1;
+    return Math.ceil(text.length / cols);
+  };
+
+  /**
+   * 从当前索引开始，计算最多能显示多少个元素（不超过可用行数）
+   */
+  const calculatePageSize = (startIndex, linesArray) => {
+    let usedRows = 0;
+    let count = 0;
+    for (let i = startIndex; i < linesArray.length; i++) {
+      let output = linesArray[i];
+      // 如果是 link 行，尝试添加 href（截断后的长度）
+      const linkMatch = linesArray[i].match(/link:\s*([^\[\n→]+)/);
+      if (linkMatch) {
+        const linkText = linkMatch[1].trim();
+        const href = linkHrefs[linkText];
+        if (href) {
+          const maxHrefLength = Math.max(20, termCols - output.length - 5);
+          const shortHref = href.length > maxHrefLength ? href.substring(0, maxHrefLength - 3) + '...' : href;
+          output += ` → ${shortHref}`;
+        }
+      }
+      const rowsNeeded = calculateWrappedRows(output, termCols);
+      if (usedRows + rowsNeeded > availableRows) {
+        break;
+      }
+      usedRows += rowsNeeded;
+      count++;
+    }
+    return Math.max(1, count);
+  };
+
+  // 预计算每页的起始位置和元素数量
+  const pageBreaks = [];
+  let currentIndex = 0;
+  while (currentIndex < interactiveLines.length) {
+    const count = calculatePageSize(currentIndex, interactiveLines);
+    pageBreaks.push({ start: currentIndex, count });
+    currentIndex += count;
+  }
+
+  const totalPages = pageBreaks.length;
+  let currentPage = 0;
+
   const showPage = (page) => {
     console.clear();
-    const start = page * pageSize;
-    const end = Math.min(start + pageSize, interactiveLines.length);
+    const pageBreak = pageBreaks[page];
+    const start = pageBreak.start;
+    const end = Math.min(start + pageBreak.count, interactiveLines.length);
     const pageLines = interactiveLines.slice(start, end);
 
     console.log(`\n========== 可交互元素 (第 ${page + 1}/${totalPages} 页) ==========`);
-    
+
     for (const line of pageLines) {
-      console.log(line);
+      let output = line;
+      // 如果是 link 行，尝试添加 href
+      const linkMatch = output.match(/link:\s*([^\[\n→]+)/);
+      if (linkMatch) {
+        const linkText = linkMatch[1].trim();
+        const href = linkHrefs[linkText];
+        if (href) {
+          const maxHrefLength = Math.max(20, termCols - output.length - 5);
+          const shortHref = href.length > maxHrefLength ? href.substring(0, maxHrefLength - 3) + '...' : href;
+          output += ` → ${shortHref}`;
+        }
+      }
+      // 限制行长度，超出部分截断，避免终端自动换行导致显示混乱
+      if (output.length >= termCols) {
+        output = output.substring(0, termCols - 3) + '...';
+      }
+      console.log(output);
     }
-    
+
     console.log('=====================================\n');
     console.log('[Enter] 下一页  [\\] 上一页  [ESC] 退出');
   };
