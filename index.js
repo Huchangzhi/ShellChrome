@@ -401,8 +401,8 @@ async function handleElementsAuto() {
   const termRows = process.stdout.rows || 30;
   const termCols = process.stdout.columns || 120;
 
-  // 预留行数用于标题和提示
-  const reservedRows = 5;
+  // 预留行数用于标题和提示（标题 2 行 + 底部提示 2 行 + 额外空 3 行 = 7 行）
+  const reservedRows = 7;
   const availableRows = termRows - reservedRows;
 
   // 设置终端为 raw 模式以监听按键
@@ -415,10 +415,31 @@ async function handleElementsAuto() {
 
   /**
    * 计算一行文本在终端中实际占用的行数（考虑自动换行）
+   * 中文字符占 2 个宽度，英文字符占 1 个宽度
    */
   const calculateWrappedRows = (text, cols) => {
     if (!text || text.length === 0) return 1;
-    return Math.ceil(text.length / cols);
+    
+    // 计算文本的实际显示宽度
+    let displayWidth = 0;
+    for (const char of text) {
+      const code = char.codePointAt(0);
+      // 中文字符（CJK 统一表意文字）范围：0x4E00-0x9FFF，以及其他需要 2 个宽度的字符
+      if (
+        (code >= 0x4E00 && code <= 0x9FFF) ||  // CJK 统一表意文字
+        (code >= 0x3400 && code <= 0x4DBF) ||  // CJK 扩展 A
+        (code >= 0x20000 && code <= 0x2A6DF) || // CJK 扩展 B
+        (code >= 0xF900 && code <= 0xFAFF) ||  // CJK 兼容表意文字
+        (code >= 0x2F800 && code <= 0x2FA1F) || // CJK 兼容补充
+        code >= 0xFF00  // 全角字符
+      ) {
+        displayWidth += 2;
+      } else {
+        displayWidth += 1;
+      }
+    }
+    
+    return Math.ceil(displayWidth / cols);
   };
 
   /**
@@ -429,15 +450,13 @@ async function handleElementsAuto() {
     let count = 0;
     for (let i = startIndex; i < linesArray.length; i++) {
       let output = linesArray[i];
-      // 如果是 link 行，尝试添加 href（截断后的长度）
+      // 如果是 link 行，尝试添加 href（使用完整 URL）
       const linkMatch = linesArray[i].match(/link:\s*([^\[\n]+)/);
       if (linkMatch) {
         const linkText = linkMatch[1].trim();
         const href = linkHrefs[linkText];
         if (href) {
-          const maxHrefLength = Math.max(20, termCols - output.length - 5);
-          const shortHref = href.length > maxHrefLength ? href.substring(0, maxHrefLength - 3) + '...' : href;
-          output += ` → ${shortHref}`;
+          output += ` → ${href}`;
         }
       }
       const rowsNeeded = calculateWrappedRows(output, termCols);
@@ -479,14 +498,8 @@ async function handleElementsAuto() {
         const linkText = linkMatch[1].trim();
         const href = linkHrefs[linkText];
         if (href) {
-          const maxHrefLength = Math.max(20, termCols - output.length - 5);
-          const shortHref = href.length > maxHrefLength ? href.substring(0, maxHrefLength - 3) + '...' : href;
-          output += ` → ${shortHref}`;
+          output += ` → ${href}`;
         }
-      }
-      // 限制行长度，超出部分截断，避免终端自动换行导致显示混乱
-      if (output.length >= termCols) {
-        output = output.substring(0, termCols - 3) + '...';
       }
       console.log(output);
     }
@@ -571,7 +584,7 @@ async function handleInteractiveElements() {
         for (const type of interactiveTypes) {
           if (line.includes(type)) {
             let desc = line.replace(/\[uid_\d+\]\s*/i, '').trim();
-            
+
             // 如果是 link，添加 href
             if (type === 'link:') {
               const linkMatch = desc.match(/link:\s*([^\[\n→]+)/);
@@ -579,12 +592,11 @@ async function handleInteractiveElements() {
                 const linkText = linkMatch[1].trim();
                 const href = linkHrefs[linkText];
                 if (href) {
-                  const shortHref = href.length > 50 ? href.substring(0, 47) + '...' : href;
-                  desc += ` → ${shortHref}`;
+                  desc += ` → ${href}`;
                 }
               }
             }
-            
+
             interactiveLines.push(`[${uid}] ${desc}`);
             break;
           }
@@ -604,8 +616,8 @@ async function handleInteractiveElements() {
   const termRows = process.stdout.rows || 30;
   const termCols = process.stdout.columns || 120;
 
-  // 预留行数用于标题和提示
-  const reservedRows = 5;
+  // 预留行数用于标题和提示（标题 2 行 + 底部提示 2 行 + 额外空 3 行 = 7 行）
+  const reservedRows = 7;
   const availableRows = termRows - reservedRows;
 
   // 设置终端为 raw 模式
@@ -618,10 +630,31 @@ async function handleInteractiveElements() {
 
   /**
    * 计算一行文本在终端中实际占用的行数（考虑自动换行）
+   * 中文字符占 2 个宽度，英文字符占 1 个宽度
    */
   const calculateWrappedRows = (text, cols) => {
     if (!text || text.length === 0) return 1;
-    return Math.ceil(text.length / cols);
+    
+    // 计算文本的实际显示宽度
+    let displayWidth = 0;
+    for (const char of text) {
+      const code = char.codePointAt(0);
+      // 中文字符（CJK 统一表意文字）范围：0x4E00-0x9FFF，以及其他需要 2 个宽度的字符
+      if (
+        (code >= 0x4E00 && code <= 0x9FFF) ||  // CJK 统一表意文字
+        (code >= 0x3400 && code <= 0x4DBF) ||  // CJK 扩展 A
+        (code >= 0x20000 && code <= 0x2A6DF) || // CJK 扩展 B
+        (code >= 0xF900 && code <= 0xFAFF) ||  // CJK 兼容表意文字
+        (code >= 0x2F800 && code <= 0x2FA1F) || // CJK 兼容补充
+        code >= 0xFF00  // 全角字符
+      ) {
+        displayWidth += 2;
+      } else {
+        displayWidth += 1;
+      }
+    }
+    
+    return Math.ceil(displayWidth / cols);
   };
 
   /**
@@ -632,15 +665,13 @@ async function handleInteractiveElements() {
     let count = 0;
     for (let i = startIndex; i < linesArray.length; i++) {
       let output = linesArray[i];
-      // 如果是 link 行，尝试添加 href（截断后的长度）
+      // 如果是 link 行，尝试添加 href（使用完整 URL）
       const linkMatch = linesArray[i].match(/link:\s*([^\[\n→]+)/);
       if (linkMatch) {
         const linkText = linkMatch[1].trim();
         const href = linkHrefs[linkText];
         if (href) {
-          const maxHrefLength = Math.max(20, termCols - output.length - 5);
-          const shortHref = href.length > maxHrefLength ? href.substring(0, maxHrefLength - 3) + '...' : href;
-          output += ` → ${shortHref}`;
+          output += ` → ${href}`;
         }
       }
       const rowsNeeded = calculateWrappedRows(output, termCols);
@@ -682,14 +713,8 @@ async function handleInteractiveElements() {
         const linkText = linkMatch[1].trim();
         const href = linkHrefs[linkText];
         if (href) {
-          const maxHrefLength = Math.max(20, termCols - output.length - 5);
-          const shortHref = href.length > maxHrefLength ? href.substring(0, maxHrefLength - 3) + '...' : href;
-          output += ` → ${shortHref}`;
+          output += ` → ${href}`;
         }
-      }
-      // 限制行长度，超出部分截断，避免终端自动换行导致显示混乱
-      if (output.length >= termCols) {
-        output = output.substring(0, termCols - 3) + '...';
       }
       console.log(output);
     }
