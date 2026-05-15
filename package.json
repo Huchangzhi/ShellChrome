@@ -1,6 +1,6 @@
 {
   "name": "shellchrome",
-  "version": "1.0.5",
+  "version": "1.1.0",
   "description": "基于 Puppeteer 的 Node.js 中文控制台浏览器",
   "main": "index.js",
   "bin": "index.js",
@@ -21,7 +21,9 @@
   "license": "MIT",
   "dependencies": {
     "jimp": "^1.6.0",
-    "puppeteer-core": "^24.0.0"
+    "puppeteer-core": "^24.0.0",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2"
   },
   "devDependencies": {
     "esbuild": "latest",

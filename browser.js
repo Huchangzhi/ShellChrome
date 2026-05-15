@@ -3,7 +3,9 @@
  * 支持打开/关闭/切换标签页、查看元素、点击按钮、输入文本等功能
  */
 
-const puppeteer = require('puppeteer-core');
+const puppeteer = require('puppeteer-extra');
+const StealthPlugin = require('puppeteer-extra-plugin-stealth');
+puppeteer.use(StealthPlugin());
 const fs = require('node:fs');
 const path = require('node:path');
 
@@ -121,11 +123,13 @@ class ConsoleBrowser {
       executablePath,
       headless: this.headless,
       defaultViewport: null,
+      ignoreDefaultArgs: ['--enable-automation'],
       args: [
         '--hide-crash-restore-bubble',
         '--disable-gpu',
         '--no-sandbox',
         '--disable-dev-shm-usage',
+        '--lang=zh-CN',
       ],
     });
 
@@ -202,6 +206,11 @@ class ConsoleBrowser {
   async openPage(url) {
     const fullUrl = this.normalizeUrl(url);
     const page = await this.browser.newPage();
+    await page.setExtraHTTPHeaders({ 'Accept-Language': 'zh-CN,zh;q=0.9' });
+    await page.evaluateOnNewDocument(() => {
+      Object.defineProperty(navigator, 'language', { get: () => 'zh-CN' });
+      Object.defineProperty(navigator, 'languages', { get: () => ['zh-CN', 'zh'] });
+    });
     await page.goto(fullUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
     await this.refreshPages();
     this.currentPage = page;
