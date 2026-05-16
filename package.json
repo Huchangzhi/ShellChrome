@@ -1,12 +1,12 @@
 {
   "name": "shellchrome",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "基于 Puppeteer 的 Node.js 中文控制台浏览器",
   "main": "index.js",
   "bin": "index.js",
   "scripts": {
     "start": "node index.js",
-    "bundle": "esbuild index.js --bundle --platform=node --target=node20 --format=cjs --outfile=dist/bundle.cjs --external:puppeteer-core --external:child_process --external:fs --external:path --external:url",
+    "bundle": "esbuild index.js --bundle --platform=node --target=node20 --format=cjs --outfile=dist/bundle.cjs --external:puppeteer-core --external:child_process --external:fs --external:path --external:url --external:kind-of --external:for-own --external:is-plain-object --external:shallow-clone --external:lazy-cache --external:merge-deep --external:clone-deep",
     "build:nexe": "node scripts/copy-bundle.js && nexe bundle.cjs --target node20 --output dist/shellchrome && node scripts/cleanup.js"
   },
   "keywords": [
@@ -20,10 +20,18 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "clone-deep": "^4.0.1",
+    "for-own": "^1.0.0",
+    "is-plain-object": "^5.0.0",
     "jimp": "^1.6.0",
+    "kind-of": "^6.0.3",
+    "lazy-cache": "^2.0.1",
+    "merge-deep": "^3.0.3",
     "puppeteer-core": "^24.0.0",
     "puppeteer-extra": "^3.3.6",
-    "puppeteer-extra-plugin-stealth": "^2.11.2"
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
+    "puppeteer-extra-plugin-user-preferences": "^2.4.1",
+    "shallow-clone": "^3.0.1"
   },
   "devDependencies": {
     "esbuild": "latest",
