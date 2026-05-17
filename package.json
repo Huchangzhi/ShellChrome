@@ -6,7 +6,7 @@
   "bin": "index.js",
   "scripts": {
     "start": "node index.js",
-    "bundle": "esbuild index.js --bundle --platform=node --target=node20 --format=cjs --outfile=dist/bundle.cjs --external:puppeteer-core --external:child_process --external:fs --external:path --external:url --external:kind-of --external:for-own --external:is-plain-object --external:shallow-clone --external:lazy-cache --external:merge-deep --external:clone-deep",
+    "bundle": "esbuild index.js --bundle --platform=node --target=node20 --format=cjs --outfile=dist/bundle.cjs --external:puppeteer-core --external:child_process --external:fs --external:path --external:url --external:kind-of --external:for-own --external:is-plain-object --external:shallow-clone --external:lazy-cache --external:merge-deep --external:clone-deep --external:puppeteer-extra --external:puppeteer-extra-plugin --external:puppeteer-extra-plugin-stealth --external:puppeteer-extra-plugin-stealth/evasions/* --external:puppeteer-extra-plugin-user-preferences --external:puppeteer-extra-plugin-user-data-dir",
     "build:nexe": "node scripts/copy-bundle.js && nexe bundle.cjs --target node20 --output dist/shellchrome && node scripts/cleanup.js"
   },
   "keywords": [
