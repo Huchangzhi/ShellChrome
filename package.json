@@ -1,13 +1,22 @@
 {
   "name": "shellchrome",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "description": "基于 Puppeteer 的 Node.js 中文控制台浏览器",
   "main": "index.js",
-  "bin": "index.js",
+  "bin": {
+    "shellchrome": "index.js",
+    "shellchrome-cli": "cli/index.js"
+  },
   "scripts": {
     "start": "node index.js",
-    "bundle": "esbuild index.js --bundle --platform=node --target=node20 --format=cjs --outfile=dist/bundle.cjs --external:puppeteer-core --external:child_process --external:fs --external:path --external:url --external:kind-of --external:for-own --external:is-plain-object --external:shallow-clone --external:lazy-cache --external:merge-deep --external:clone-deep --external:puppeteer-extra --external:puppeteer-extra-plugin --external:puppeteer-extra-plugin-stealth --external:puppeteer-extra-plugin-stealth/evasions/* --external:puppeteer-extra-plugin-user-preferences --external:puppeteer-extra-plugin-user-data-dir",
-    "build:nexe": "node scripts/copy-bundle.js && nexe bundle.cjs --target node20 --output dist/shellchrome && node scripts/cleanup.js"
+    "cli:start": "node cli/index.js start",
+    "cli:stop": "node cli/index.js stop",
+    "cli:status": "node cli/index.js status",
+    "bundle": "esbuild index.js --bundle --platform=node --target=node20 --format=cjs --outfile=dist/bundle.cjs --external:puppeteer-core --external:child_process --external:fs --external:path --external:url --external:os --external:crypto --external:net --external:events --external:kind-of --external:for-own --external:is-plain-object --external:shallow-clone --external:lazy-cache --external:merge-deep --external:clone-deep --external:puppeteer-extra --external:puppeteer-extra-plugin --external:puppeteer-extra-plugin-stealth --external:puppeteer-extra-plugin-stealth/evasions/* --external:puppeteer-extra-plugin-user-preferences --external:puppeteer-extra-plugin-user-data-dir",
+    "bundle:cli": "esbuild cli/index.js --bundle --platform=node --target=node20 --format=cjs --outfile=dist/bundle-cli.cjs --external:puppeteer-core --external:child_process --external:fs --external:path --external:url --external:os --external:crypto --external:net --external:events --external:kind-of --external:for-own --external:is-plain-object --external:shallow-clone --external:lazy-cache --external:merge-deep --external:clone-deep --external:puppeteer-extra --external:puppeteer-extra-plugin --external:puppeteer-extra-plugin-stealth --external:puppeteer-extra-plugin-stealth/evasions/* --external:puppeteer-extra-plugin-user-preferences --external:puppeteer-extra-plugin-user-data-dir",
+    "bundle:all": "npm run bundle && npm run bundle:cli",
+    "build:repl": "node scripts/copy-bundle.js && nexe bundle.cjs --target node20 --output dist/shellchrome && node scripts/cleanup.js",
+    "build:cli": "node scripts/copy-bundle.js cli && nexe bundle-cli.cjs --target node20 --output dist/shellchrome-cli && node scripts/cleanup.js cli"
   },
   "keywords": [
     "chrome",

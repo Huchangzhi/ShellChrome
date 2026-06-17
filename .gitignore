@@ -7,6 +7,8 @@ dist/
 build/
 *.exe
 *.log
+bundle.cjs
+bundle-cli.cjs
 
 # 临时文件
 *.png
@@ -21,6 +23,9 @@ test-output.txt
 # 系统文件
 .DS_Store
 Thumbs.db
+
+# Daemon PID file
+.shellchrome.pid
 
 # 编辑器
 .vscode/
