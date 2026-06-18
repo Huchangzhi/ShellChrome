@@ -37,7 +37,9 @@ const HELP_TEXT = `
 ║    lc                获取可交互元素（按钮/输入框/链接）        ║
 ║    s                 截图保存到 ./image.png                    ║
 ║    sp                截图并在终端显示（彩色色块）              ║
+║    spw               连续截图预览（动态刷新，按 ESC 退出）     ║
 ║    st                截图并在终端显示（彩色色块 + 文字）       ║
+║    stw               连续截图显示文字（动态刷新，按 ESC 退出）  ║
 ║    sa                截图并在终端显示（ASCII）                 ║
 ╠══════════════════════════════════════════════════════════════╣
 ║  交互操作：                                                   ║
@@ -66,11 +68,12 @@ function showWelcome() {
   console.log(`
 ╔════════════════════════════════════════════════════════════════════╗
 ║                                                                    ║
-║       🌐  ShellChrome v1.2.0                                      ║
+║       🌐  ShellChrome v1.2.1                                      ║
 ║       基于 Puppeteer                                               ║
 ║                                                                    ║
 ║       快捷命令：c=点击，t=输入，k=按键，sl=停顿，q=关闭，ba=返回       ║
-║       l=元素，lc=可交互元素，sp=色块，st=色块+文字，sa=ASCII，hi=历史  ║
+║       l=元素，lc=可交互元素，sp=色块，spw=连续色块，st=色块+文字，      ║
+║       stw=连续文字(ESC退出)，sa=ASCII，hi=历史                          ║
 ║       fc=点击文字，ft=输入到文字，ui=UI模式                          ║
 ║       h=帮助，x=退出，a=自动化                                       ║
 ║                                                                    ║
@@ -95,8 +98,13 @@ async function executeCommand(input) {
     return;
   }
 
-  if (command === 'spw' || command === 'stw') {
-    console.log('连续截图预览已移除，请使用 sp/st 进行单次截图');
+  if (command === 'spw') {
+    await handleScreenshotPreviewWatch();
+    return;
+  }
+
+  if (command === 'stw') {
+    await handleScreenshotWithTextWatch();
     return;
   }
 
@@ -576,6 +584,97 @@ function handleAutoEnd() {
   console.log(`✅ 已保存自动化脚本："${script.name}" (编号：${script.id})`);
   console.log(`   共录制 ${script.commands.length} 条命令`);
   recordingState = null;
+}
+
+function getTerminalSize() {
+  const cols = process.stdout.columns || 100;
+  const rows = process.stdout.rows || 50;
+  return {
+    width: Math.max(20, cols - 2),
+    height: Math.max(10, rows - 3),
+  };
+}
+
+async function handleScreenshotPreviewWatch() {
+  readline.emitKeypressEvents(process.stdin);
+  if (process.stdin.isTTY) process.stdin.setRawMode(true);
+
+  console.log('正在连续截图预览...');
+  console.log('按 [ESC] 退出');
+
+  let running = true;
+  const keypressHandler = (str, key) => {
+    if (key && key.name === 'escape') running = false;
+  };
+  process.stdin.on('keypress', keypressHandler);
+
+  await new Promise(resolve => setTimeout(resolve, 500));
+
+  try {
+    while (running) {
+      const startTime = Date.now();
+      const imageData = await actionExecutor.screenshotBuffer();
+      const termSize = getTerminalSize();
+      const rendered = await renderImageToTerminal(imageData, termSize.width, termSize.height);
+
+      process.stdout.write('\x1b[2J\x1b[H');
+      console.log('[spw - 按 ESC 退出]');
+      console.log(rendered);
+
+      const elapsed = Date.now() - startTime;
+      const delay = Math.max(0, 200 - elapsed);
+      if (delay > 0 && running) await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  } catch (error) {
+    console.log(`${COLORS.fg.red}截图失败：${error.message}${COLORS.reset}`);
+  } finally {
+    process.stdin.removeListener('keypress', keypressHandler);
+    if (process.stdin.isTTY) process.stdin.setRawMode(false);
+    console.log('\n已退出连续预览');
+  }
+}
+
+async function handleScreenshotWithTextWatch() {
+  readline.emitKeypressEvents(process.stdin);
+  if (process.stdin.isTTY) process.stdin.setRawMode(true);
+
+  console.log('正在连续截图显示文字...');
+  console.log('按 [ESC] 退出');
+
+  let running = true;
+  const keypressHandler = (str, key) => {
+    if (key && key.name === 'escape') running = false;
+  };
+  process.stdin.on('keypress', keypressHandler);
+
+  await new Promise(resolve => setTimeout(resolve, 500));
+
+  try {
+    while (running) {
+      const startTime = Date.now();
+
+      await snapshotManager.takeSnapshot();
+      const elements = await snapshotManager.getElementsForOCR();
+
+      const imageData = await actionExecutor.screenshotBuffer();
+      const termSize = getTerminalSize();
+      const rendered = await renderImageWithText(imageData, termSize.width, termSize.height, elements);
+
+      process.stdout.write('\x1b[2J\x1b[H');
+      console.log(`[stw - 按 ESC 退出] [元素：${elements.length}]`);
+      console.log(rendered);
+
+      const elapsed = Date.now() - startTime;
+      const delay = Math.max(0, 200 - elapsed);
+      if (delay > 0 && running) await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  } catch (error) {
+    console.log(`${COLORS.fg.red}截图失败：${error.message}${COLORS.reset}`);
+  } finally {
+    process.stdin.removeListener('keypress', keypressHandler);
+    if (process.stdin.isTTY) process.stdin.setRawMode(false);
+    console.log('\n已退出连续预览');
+  }
 }
 
 async function start() {

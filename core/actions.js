@@ -17,30 +17,31 @@ class ActionExecutor {
       await new Promise(resolve => setTimeout(resolve, 100));
 
       const isLink = await handle.evaluate(el => el.tagName === 'A');
-      const target = await handle.evaluate(el => el.target);
-      const isOpenInNewTab = target === '_blank';
+      const pagesBefore = (await page.browser().pages()).length;
+
+      let clicked = false;
 
       try {
-        await handle.evaluate(el => el.click());
-      } catch (e1) {
-        try {
-          await handle.click();
-        } catch (e2) {
-          const box = await handle.boundingBox();
-          if (box) {
-            await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
-          } else {
-            throw e2;
-          }
+        const box = await handle.boundingBox();
+        if (box && box.width > 0 && box.height > 0) {
+          await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+          clicked = true;
         }
+      } catch (e) {}
+
+      if (!clicked) {
+        try {
+          await handle.evaluate(el => el.click());
+          clicked = true;
+        } catch (e) {}
       }
 
-      if (isLink && isOpenInNewTab) {
+      if (isLink) {
         await new Promise(resolve => setTimeout(resolve, 500));
         await this.browserManager.refreshPages();
-        const pages = this.browserManager.pages;
-        if (pages.length > 1) {
-          this.browserManager.currentPage = pages[pages.length - 1]._page;
+        const pagesAfter = this.browserManager.pages;
+        if (pagesAfter.length > pagesBefore) {
+          this.browserManager.currentPage = pagesAfter[pagesAfter.length - 1]._page;
         }
       }
 
@@ -75,6 +76,43 @@ class ActionExecutor {
   async pressKey(key) {
     const page = this.browserManager.getCurrentPage();
     await page.keyboard.press(key);
+
+    if (key === 'Enter') {
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      const submitInfo = await page.evaluate(() => {
+        const el = document.activeElement;
+        if (!el) return { found: false };
+        const form = el.closest('form');
+        if (!form) return { found: false };
+
+        const btn = form.querySelector('[type="submit"]') ||
+                    form.querySelector('button:not([type])');
+        if (btn) {
+          const rect = btn.getBoundingClientRect();
+          return { found: true, method: 'standard', x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
+        }
+
+        const clickables = form.querySelectorAll('[role="button"], [class*="btn"], [class*="submit"]');
+        for (const c of clickables) {
+          const style = window.getComputedStyle(c);
+          if (style.cursor === 'pointer') {
+            const rect = c.getBoundingClientRect();
+            if (rect.width > 0 && rect.height > 0) {
+              return { found: true, method: 'custom', x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
+            }
+          }
+        }
+
+        return { found: false };
+      });
+
+      if (submitInfo.found) {
+        await page.mouse.click(submitInfo.x, submitInfo.y);
+        return { text: `已按下按键 ${key}（并点击了提交按钮）`, key };
+      }
+    }
+
     return { text: `已按下按键 ${key}`, key };
   }
 

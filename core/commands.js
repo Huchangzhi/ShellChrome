@@ -226,8 +226,7 @@ class CommandDispatcher {
 
     const lines = await this.snapshotManager.getSnapshotLines();
 
-    const all = args.includes('--all');
-    let page = 1;
+    let page = null;
     let pageSize = 50;
 
     for (let i = 0; i < args.length; i++) {
@@ -237,7 +236,7 @@ class CommandDispatcher {
 
     const totalPages = Math.ceil(lines.length / pageSize);
 
-    if (all) {
+    if (page === null) {
       return {
         success: true,
         displayType: 'elements',
@@ -266,7 +265,7 @@ class CommandDispatcher {
     const interactiveElements = this.snapshotManager.getInteractiveElements();
 
     const all = args.includes('--all');
-    let page = 1;
+    let page = null;
     let pageSize = 50;
 
     for (let i = 0; i < args.length; i++) {
@@ -277,7 +276,7 @@ class CommandDispatcher {
     const totalPages = Math.ceil(interactiveElements.length / pageSize);
 
     let resultElements;
-    if (all) {
+    if (page === null) {
       resultElements = interactiveElements;
     } else {
       const start = (page - 1) * pageSize;

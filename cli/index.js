@@ -34,7 +34,7 @@ async function main() {
       break;
     case '--version':
     case '-v':
-      console.log('1.2.0');
+      console.log('1.2.1');
       break;
     default:
       const exitCode = await runClient(subcommand, filteredArgs, { json: jsonFlag });
@@ -45,7 +45,7 @@ async function main() {
 function printUsage() {
   console.log(`
 ╔══════════════════════════════════════════════════════════════╗
-║       ShellChrome CLI v1.2.0 - 命令行浏览器控制工具         ║
+║       ShellChrome CLI v1.2.1 - 命令行浏览器控制工具         ║
 ╚══════════════════════════════════════════════════════════════╝
 
 概述：
@@ -179,7 +179,7 @@ async function startDaemon(args) {
   child.unref();
 
   const pidPath = getPidPath();
-  const maxWait = 10000;
+  const maxWait = 60000;
   const interval = 200;
   let waited = 0;
 
@@ -198,7 +198,7 @@ async function startDaemon(args) {
     }
   }
 
-  console.error('Daemon failed to start within 10 seconds');
+  console.error('Daemon failed to start within 60 seconds');
   console.error('Try running manually: node cli/daemon.js');
   process.exit(1);
 }
