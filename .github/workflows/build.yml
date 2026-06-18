@@ -66,6 +66,13 @@ jobs:
       - name: Install nexe
         run: npm install -g nexe
 
+      - name: Install NASM
+        run: |
+          choco install nasm -y
+          $nasmPath = Get-ChildItem -Path "C:\Program Files\NASM" -Filter "nasm.exe" -Recurse | Select-Object -First 1 -ExpandProperty DirectoryName
+          echo "$nasmPath" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        shell: pwsh
+
       - name: Build with nexe
         run: |
           node scripts/copy-bundle.js
@@ -135,6 +142,13 @@ jobs:
 
       - name: Install nexe
         run: npm install -g nexe
+
+      - name: Install NASM
+        run: |
+          choco install nasm -y
+          $nasmPath = Get-ChildItem -Path "C:\Program Files\NASM" -Filter "nasm.exe" -Recurse | Select-Object -First 1 -ExpandProperty DirectoryName
+          echo "$nasmPath" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        shell: pwsh
 
       - name: Build CLI with nexe
         run: |
