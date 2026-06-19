@@ -1,11 +1,13 @@
 const os = require('os');
 const path = require('path');
+const crypto = require('crypto');
 
 function getSocketPath() {
+  const hash = crypto.createHash('md5').update(process.cwd()).digest('hex').slice(0, 8);
   if (process.platform === 'win32') {
-    return '\\\\.\\pipe\\shellchrome';
+    return `\\\\.\\pipe\\shellchrome-${hash}`;
   }
-  return path.join(os.tmpdir(), 'shellchrome.sock');
+  return path.join(os.tmpdir(), `shellchrome-${hash}.sock`);
 }
 
 function getPidPath() {

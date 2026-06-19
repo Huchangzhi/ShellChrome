@@ -182,13 +182,10 @@ async function startDaemon(args) {
 
   let child;
   if (isNexe) {
-    const nodeModulesPath = path.join(process.cwd(), 'node_modules');
-    const env = { ...process.env, NODE_PATH: nodeModulesPath };
     child = spawn(process.execPath, ['--daemon', ...args], {
       detached: true,
       stdio: 'ignore',
       cwd: process.cwd(),
-      env,
     });
   } else {
     const daemonPath = path.join(__dirname, 'daemon.js');
