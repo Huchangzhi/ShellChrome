@@ -36,6 +36,15 @@ async function main() {
     case '-v':
       console.log('1.2.1');
       break;
+    case '--daemon': {
+      const { Daemon } = require('./daemon');
+      const daemon = new Daemon();
+      daemon.start().catch(err => {
+        console.error('[daemon] Failed to start:', err.message);
+        process.exit(1);
+      });
+      return;
+    }
     default:
       const exitCode = await runClient(subcommand, filteredArgs, { json: jsonFlag });
       process.exit(exitCode);
@@ -167,14 +176,25 @@ async function startDaemon(args) {
     process.exit(0);
   }
 
-  const daemonPath = path.join(__dirname, 'daemon.js');
-  const daemonArgs = [daemonPath, ...args];
+  const isNexe = !process.execPath.endsWith('node') &&
+                 !process.execPath.endsWith('node.exe') &&
+                 !process.execPath.includes('node_modules');
 
-  const child = spawn(process.execPath, daemonArgs, {
-    detached: true,
-    stdio: 'ignore',
-    cwd: process.cwd(),
-  });
+  let child;
+  if (isNexe) {
+    child = spawn(process.execPath, ['--daemon', ...args], {
+      detached: true,
+      stdio: 'ignore',
+      cwd: process.cwd(),
+    });
+  } else {
+    const daemonPath = path.join(__dirname, 'daemon.js');
+    child = spawn(process.execPath, [daemonPath, ...args], {
+      detached: true,
+      stdio: 'ignore',
+      cwd: process.cwd(),
+    });
+  }
 
   child.unref();
 

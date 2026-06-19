@@ -213,7 +213,7 @@ class Daemon {
   }
 }
 
-if (require.main === module || process.argv[1]?.endsWith('daemon.js')) {
+if (require.main === module || process.argv[1]?.endsWith('daemon.js') || process.argv.includes('--daemon')) {
   const daemon = new Daemon();
   daemon.start().catch(err => {
     console.error('[daemon] Failed to start:', err.message);
