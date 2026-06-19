@@ -81,8 +81,11 @@ class Daemon {
     this.server = net.createServer((socket) => this.handleConnection(socket));
 
     await new Promise((resolve, reject) => {
-      this.server.listen(socketPath, () => resolve());
-      this.server.on('error', reject);
+      this.server.once('error', reject);
+      this.server.listen(socketPath, () => {
+        this.server.removeListener('error', reject);
+        setTimeout(resolve, 500);
+      });
     });
 
     this.writePidFile();
