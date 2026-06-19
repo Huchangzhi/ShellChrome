@@ -34,7 +34,7 @@ async function main() {
       break;
     case '--version':
     case '-v':
-      console.log('1.2.1');
+      console.log('1.2.2');
       break;
     case '--daemon': {
       const { Daemon } = require('./daemon');
@@ -54,7 +54,7 @@ async function main() {
 function printUsage() {
   console.log(`
 ╔══════════════════════════════════════════════════════════════╗
-║       ShellChrome CLI v1.2.1 - 命令行浏览器控制工具         ║
+║       ShellChrome CLI v1.2.2 - 命令行浏览器控制工具         ║
 ╚══════════════════════════════════════════════════════════════╝
 
 概述：
