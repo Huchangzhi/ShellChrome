@@ -1,6 +1,6 @@
 {
   "name": "shellchrome",
-  "version": "1.2.3",
+  "version": "1.2.4",
   "description": "基于 Puppeteer 的 Node.js 中文控制台浏览器",
   "main": "index.js",
   "bin": {
