@@ -73,23 +73,43 @@ class Daemon {
       this.autoRestart();
     });
 
-    const socketPath = getSocketPath();
-    if (process.platform !== 'win32') {
-      try { fs.unlinkSync(socketPath); } catch (e) {}
+    const socketInfo = getSocketPath();
+    if (socketInfo.type === 'unix') {
+      try { fs.unlinkSync(socketInfo.path); } catch (e) {}
     }
 
-    this.server = net.createServer((socket) => this.handleConnection(socket));
-
-    await new Promise((resolve, reject) => {
-      this.server.once('error', reject);
-      this.server.listen(socketPath, () => {
-        this.server.removeListener('error', reject);
-        setTimeout(resolve, 500);
-      });
-    });
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        this.server = net.createServer((socket) => this.handleConnection(socket));
+        await new Promise((resolve, reject) => {
+          this.server.once('error', reject);
+          if (socketInfo.type === 'tcp') {
+            this.server.listen(socketInfo.port, socketInfo.host, () => {
+              this.server.removeListener('error', reject);
+              setTimeout(resolve, 500);
+            });
+          } else {
+            this.server.listen(socketInfo.path, () => {
+              this.server.removeListener('error', reject);
+              setTimeout(resolve, 500);
+            });
+          }
+        });
+        break;
+      } catch (err) {
+        if (err.code === 'EADDRINUSE' && attempt < 3) {
+          console.log(`[daemon] Address busy, retry ${attempt}/3...`);
+          try { this.server.close(); } catch (e) {}
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        } else {
+          throw err;
+        }
+      }
+    }
 
     this.writePidFile();
-    console.log(`[daemon] Started (PID: ${process.pid}, socket: ${socketPath})`);
+    const addr = socketInfo.type === 'tcp' ? `${socketInfo.host}:${socketInfo.port}` : socketInfo.path;
+    console.log(`[daemon] Started (PID: ${process.pid}, addr: ${addr})`);
 
     process.on('SIGTERM', () => this.stop());
     process.on('SIGINT', () => this.stop());
@@ -206,9 +226,9 @@ class Daemon {
 
     this.removePidFile();
 
-    const socketPath = getSocketPath();
-    if (process.platform !== 'win32') {
-      try { fs.unlinkSync(socketPath); } catch (e) {}
+    const socketInfo = getSocketPath();
+    if (socketInfo.type === 'unix') {
+      try { fs.unlinkSync(socketInfo.path); } catch (e) {}
     }
 
     console.log('[daemon] Stopped');

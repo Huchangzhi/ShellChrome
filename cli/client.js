@@ -4,6 +4,14 @@ const crypto = require('crypto');
 const { getSocketPath, getPidPath, encodeMessage, decodeMessages } = require('./protocol');
 const { formatResult } = require('./output');
 
+function createConnection(callback) {
+  const info = getSocketPath();
+  if (info.type === 'tcp') {
+    return net.createConnection(info.port, info.host, callback);
+  }
+  return net.createConnection(info.path, callback);
+}
+
 function isDaemonRunning() {
   const pidPath = getPidPath();
   if (!fs.existsSync(pidPath)) return false;
@@ -38,12 +46,11 @@ async function runClient(command, args, options = {}) {
     process.exit(1);
   }
 
-  const socketPath = getSocketPath();
   const timeout = options.timeout || 30000;
   const id = crypto.randomUUID();
 
   return new Promise((resolve) => {
-    const socket = net.createConnection(socketPath, () => {
+    const socket = createConnection(() => {
       const message = { id, type: 'command', command, args };
       socket.write(encodeMessage(message));
     });
@@ -90,10 +97,8 @@ async function runHealthCheck() {
     return false;
   }
 
-  const socketPath = getSocketPath();
-
   return new Promise((resolve) => {
-    const socket = net.createConnection(socketPath, () => {
+    const socket = createConnection(() => {
       socket.write(encodeMessage({ type: 'health' }));
     });
 

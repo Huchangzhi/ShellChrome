@@ -230,16 +230,20 @@ async function stopDaemon() {
   }
 
   const pidData = getPidData();
-  const socketPath = getSocketPath();
+  const socketInfo = getSocketPath();
 
   console.log(`Stopping daemon (PID: ${pidData?.pid || 'unknown'})...`);
 
   try {
     const net = require('net');
     await new Promise((resolve) => {
-      const socket = net.createConnection(socketPath, () => {
-        socket.write(encodeMessage({ type: 'shutdown' }));
-      });
+      const socket = socketInfo.type === 'tcp'
+        ? net.createConnection(socketInfo.port, socketInfo.host, () => {
+            socket.write(encodeMessage({ type: 'shutdown' }));
+          })
+        : net.createConnection(socketInfo.path, () => {
+            socket.write(encodeMessage({ type: 'shutdown' }));
+          });
 
       socket.on('data', () => {});
       socket.on('end', resolve);
