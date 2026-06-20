@@ -4,8 +4,14 @@ const crypto = require('crypto');
 const { getSocketPath, getPidPath, encodeMessage, decodeMessages } = require('./protocol');
 const { formatResult } = require('./output');
 
+function getConnectionInfo() {
+  const pidData = getPidData();
+  if (pidData && pidData.socketPath) return pidData.socketPath;
+  return getSocketPath();
+}
+
 function createConnection(callback) {
-  const info = getSocketPath();
+  const info = getConnectionInfo();
   if (info.type === 'tcp') {
     return net.createConnection(info.port, info.host, callback);
   }

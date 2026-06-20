@@ -78,35 +78,30 @@ class Daemon {
       try { fs.unlinkSync(socketInfo.path); } catch (e) {}
     }
 
-    for (let attempt = 1; attempt <= 3; attempt++) {
-      try {
-        this.server = net.createServer((socket) => this.handleConnection(socket));
-        await new Promise((resolve, reject) => {
-          this.server.once('error', reject);
-          if (socketInfo.type === 'tcp') {
-            this.server.listen(socketInfo.port, socketInfo.host, () => {
-              this.server.removeListener('error', reject);
-              setTimeout(resolve, 500);
-            });
-          } else {
-            this.server.listen(socketInfo.path, () => {
-              this.server.removeListener('error', reject);
-              setTimeout(resolve, 500);
-            });
-          }
-        });
-        break;
-      } catch (err) {
-        if (err.code === 'EADDRINUSE' && attempt < 3) {
-          console.log(`[daemon] Address busy, retry ${attempt}/3...`);
-          try { this.server.close(); } catch (e) {}
-          await new Promise(resolve => setTimeout(resolve, 2000));
-        } else {
-          throw err;
-        }
-      }
-    }
+    this.server = net.createServer((socket) => this.handleConnection(socket));
 
+    await new Promise((resolve, reject) => {
+      const onError = (err) => {
+        this.server.removeListener('listening', onListening);
+        reject(err);
+      };
+      const onListening = () => {
+        this.server.removeListener('error', onError);
+        resolve();
+      };
+      this.server.once('error', onError);
+      this.server.once('listening', onListening);
+      if (socketInfo.type === 'tcp') {
+        this.server.listen(socketInfo.port, socketInfo.host);
+      } else {
+        this.server.listen(socketInfo.path);
+      }
+    });
+
+    if (socketInfo.type === 'tcp' && socketInfo.port === 0) {
+      socketInfo.port = this.server.address().port;
+    }
+    this.socketInfo = socketInfo;
     this.writePidFile();
     const addr = socketInfo.type === 'tcp' ? `${socketInfo.host}:${socketInfo.port}` : socketInfo.path;
     console.log(`[daemon] Started (PID: ${process.pid}, addr: ${addr})`);
@@ -118,7 +113,7 @@ class Daemon {
   writePidFile() {
     const pidData = {
       pid: process.pid,
-      socketPath: getSocketPath(),
+      socketPath: this.socketInfo || getSocketPath(),
       startedAt: this.startedAt,
       headless: this.browserManager.headless,
     };

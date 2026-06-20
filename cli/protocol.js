@@ -5,8 +5,7 @@ const crypto = require('crypto');
 function getSocketPath() {
   const hash = crypto.createHash('md5').update(process.cwd()).digest('hex').slice(0, 8);
   if (process.platform === 'win32') {
-    const port = 49152 + (parseInt(hash, 16) % 16384);
-    return { type: 'tcp', port, host: '127.0.0.1' };
+    return { type: 'tcp', port: 0, host: '127.0.0.1' };
   }
   return { type: 'unix', path: path.join(os.tmpdir(), `shellchrome-${hash}.sock`) };
 }

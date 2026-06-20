@@ -230,7 +230,7 @@ async function stopDaemon() {
   }
 
   const pidData = getPidData();
-  const socketInfo = getSocketPath();
+  const socketInfo = (pidData && pidData.socketPath) || getSocketPath();
 
   console.log(`Stopping daemon (PID: ${pidData?.pid || 'unknown'})...`);
 
